@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Transaction Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .data-structures {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .ds-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        /* Navigation */
+        .top-nav {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .nav-link {
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        /* Main Content */
+        .page-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .page-header h2 {
+            color: #333;
+            font-size: 2em;
+        }
+
+        .ds-info {
+            background: #e9ecef;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 600;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        /* Table Styles */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+        }
+
+        table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .badge-DEPOSIT {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-WITHDRAW {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-TRANSFER {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        /* Alert Styles */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Statistics Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .stat-value {
+            color: #333;
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        .stat-card .stat-label {
+            color: #999;
+            font-size: 0.8em;
+        }
+
+        /* Account Details Card */
+        .account-details-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            width: 150px;
+            color: #555;
+        }
+
+        .detail-value {
+            color: #333;
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏦 Bank Transaction Management System</h1>
+            <p>A complete banking system using Stack, Queue & Linked List</p>
+            <div class="data-structures">
+                <span class="ds-badge">🔗 Linked List (Accounts)</span>
+                <span class="ds-badge">📚 Stack (Transactions)</span>
+                <span class="ds-badge">📋 Queue (Requests)</span>
+            </div>
+        </header>
+
+        <!-- Navigation Menu -->
+        <div class="top-nav">
+            <div class="nav-links">
+                <a href="#dashboard" class="nav-link active" onclick="changePage('dashboard')">📊 Dashboard</a>
+                <a href="#create-account" class="nav-link" onclick="changePage('create-account')">➕ Create Account</a>
+                <a href="#view-accounts" class="nav-link" onclick="changePage('view-accounts')">👥 All Accounts</a>
+                <a href="#find-account" class="nav-link" onclick="changePage('find-account')">🔍 Find Account</a>
+                <a href="#deposit" class="nav-link" onclick="changePage('deposit')">💰 Deposit</a>
+                <a href="#withdraw" class="nav-link" onclick="changePage('withdraw')">💸 Withdraw</a>
+                <a href="#transfer" class="nav-link" onclick="changePage('transfer')">🔄 Transfer</a>
+                <a href="#transactions" class="nav-link" onclick="changePage('transactions')">📜 Transactions</a>
+                <a href="#requests" class="nav-link" onclick="changePage('requests')">⏳ Requests</a>
+                <a href="#add-request" class="nav-link" onclick="changePage('add-request')">📝 Add Request</a>
+                <a href="#undo" class="nav-link" onclick="undoLastTransaction()">↩️ Undo</a>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="page-content" id="mainContent">
+            <!-- Dynamic content will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        // ========== DATA STRUCTURES ==========
+
+        // Account (Linked List)
+        class Account {
+            constructor(accNo, name) {
+                this.accNo = accNo;
+                this.name = name;
+                this.balance = 0;
+                this.next = null;
+            }
+        }
+
+        // Transaction (Stack)
+        class Transaction {
+            constructor(id, accNo, type, amount, toAccNo = null) {
+                this.id = id;
+                this.accNo = accNo;
+                this.type = type;
+                this.amount = amount;
+                this.toAccNo = toAccNo;
+                this.next = null;
+            }
+        }
+
+        // Request (Queue)
+        class Request {
+            constructor(id, accNo, type, amount, toAccNo = null) {
+                this.id = id;
+                this.accNo = accNo;
+                this.type = type;
+                this.amount = amount;
+                this.toAccNo = toAccNo;
+                this.next = null;
+            }
+        }
+
+        // ========== GLOBAL VARIABLES ==========
+        let accountHead = null;      // Linked List head
+        let transactionTop = null;   // Stack top
+        let requestFront = null;     // Queue front
+        let requestRear = null;      // Queue rear
+        
+        let nextTransactionId = 1;
+        let nextRequestId = 1;
+
+        // ========== UTILITY FUNCTIONS ==========
+
+        function showAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            const mainContent = document.getElementById('mainContent');
+            mainContent.insertBefore(alertDiv, mainContent.firstChild);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+
+        function changePage(page) {
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Load appropriate page
+            switch(page) {
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'create-account':
+                    loadCreateAccount();
+                    break;
+                case 'view-accounts':
+                    loadViewAccounts();
+                    break;
+                case 'find-account':
+                    loadFindAccount();
+                    break;
+                case 'deposit':
+                    loadDeposit();
+                    break;
+                case 'withdraw':
+                    loadWithdraw();
+                    break;
+                case 'transfer':
+                    loadTransfer();
+                    break;
+                case 'transactions':
+                    loadTransactions();
+                    break;
+                case 'requests':
+                    loadRequests();
+                    break;
+                case 'add-request':
+                    loadAddRequest();
+                    break;
+            }
+        }
+
+        // ========== PAGE LOADERS ==========
+
+        function loadDashboard() {
+            // Count accounts
+            let accountCount = 0;
+            let totalBalance = 0;
+            let temp = accountHead;
+            while (temp) {
+                accountCount++;
+                totalBalance += temp.balance;
+                temp = temp.next;
+            }
+
+            // Count transactions
+            let transCount = 0;
+            let transTemp = transactionTop;
+            while (transTemp) {
+                transCount++;
+                transTemp = transTemp.next;
+            }
+
+            // Count requests
+            let reqCount = 0;
+            let reqTemp = requestFront;
+            while (reqTemp) {
+                reqCount++;
+                reqTemp = reqTemp.next;
+            }
+
+            let html = `
+                <div class="page-header">
+                    <h2>📊 Dashboard</h2>
+                    <span class="ds-info">Linked List + Stack + Queue</span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Accounts</h3>
+                        <div class="stat-value">${accountCount}</div>
+                        <div class="stat-label">Linked List</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Transactions</h3>
+                        <div class="stat-value">${transCount}</div>
+                        <div class="stat-label">Stack</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Pending Requests</h3>
+                        <div class="stat-value">${reqCount}</div>
+                        <div class="stat-label">Queue</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Balance</h3>
+                        <div class="stat-value">$${totalBalance.toFixed(2)}</div>
+                        <div class="stat-label">All Accounts</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3>Recent Transactions (Last 5)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            let count = 0;
+            transTemp = transactionTop;
+            while (transTemp && count < 5) {
+                const acc = findAccount(transTemp.accNo);
+                let details = '-';
+                if (transTemp.type === 'TRANSFER') {
+                    const toAcc = findAccount(transTemp.toAccNo);
+                    details = `To: ${transTemp.toAccNo} (${toAcc ? toAcc.name : 'Unknown'})`;
+                }
+
+                html += `
+                    <tr>
+                        <td>${transTemp.id}</td>
+                        <td>${transTemp.accNo} (${acc ? acc.name : 'Unknown'})</td>
+                        <td><span class="badge badge-${transTemp.type}">${transTemp.type}</span></td>
+                        <td>$${transTemp.amount.toFixed(2)}</td>
+                        <td>${details}</td>
+                    </tr>
+                `;
+                transTemp = transTemp.next;
+                count++;
+            }
+
+            if (count === 0) {
+                html += '<tr><td colspan="5" style="text-align: center;">No transactions found</td></tr>';
+            }
+
+            html += '</tbody></table></div>';
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadCreateAccount() {
+            const html = `
+                <div class="page-header">
+                    <h2>➕ Create New Account</h2>
+                    <span class="ds-info">Linked List</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Account Number</label>
+                    <input type="number" id="accNo" placeholder="e.g., 1001">
+                </div>
+                <div class="form-group">
+                    <label>Account Holder Name (Full Name)</label>
+                    <input type="text" id="accName" placeholder="e.g., John Doe">
+                </div>
+                <button class="btn btn-primary" onclick="createAccount()">Create Account</button>
+                <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadViewAccounts() {
+            let html = `
+                <div class="page-header">
+                    <h2>👥 All Accounts</h2>
+                    <span class="ds-info">Linked List</span>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Account No</th>
+                                <th>Holder Name</th>
+                                <th>Balance</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            let temp = accountHead;
+            if (!temp) {
+                html += '<tr><td colspan="4" style="text-align: center;">No accounts found</td></tr>';
+            } else {
+                while (temp) {
+                    html += `
+                        <tr>
+                            <td>${temp.accNo}</td>
+                            <td>${temp.name}</td>
+                            <td>$${temp.balance.toFixed(2)}</td>
+                            <td>
+                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.9em;" onclick="deleteAccount(${temp.accNo})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    temp = temp.next;
+                }
+            }
+
+            html += '</tbody></table></div>';
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadFindAccount() {
+            // Generate account options for dropdown
+            let options = '<option value="">Select an account</option>';
+            let temp = accountHead;
+            while (temp) {
+                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name}</option>`;
+                temp = temp.next;
+            }
+
+            const html = `
+                <div class="page-header">
+                    <h2>🔍 Find Account Details</h2>
+                    <span class="ds-info">Linked List</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Account</label>
+                    <select id="searchAccountSelect" onchange="showAccountDetails()">
+                        ${options}
+                    </select>
+                </div>
+
+                <div id="accountDetailsContainer"></div>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadDeposit() {
+            // Generate account options for dropdown
+            let options = '<option value="">Select an account</option>';
+            let temp = accountHead;
+            while (temp) {
+                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name} ($${temp.balance})</option>`;
+                temp = temp.next;
+            }
+
+            const html = `
+                <div class="page-header">
+                    <h2>💰 Deposit Money</h2>
+                    <span class="ds-info">Stack + Queue</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Account</label>
+                    <select id="depositAccount">
+                        ${options}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="number" id="depositAmount" placeholder="e.g., 5000">
+                </div>
+                <button class="btn btn-primary" onclick="depositMoney()">Deposit</button>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadWithdraw() {
+            // Generate account options for dropdown
+            let options = '<option value="">Select an account</option>';
+            let temp = accountHead;
+            while (temp) {
+                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name} ($${temp.balance})</option>`;
+                temp = temp.next;
+            }
+
+            const html = `
+                <div class="page-header">
+                    <h2>💸 Withdraw Money</h2>
+                    <span class="ds-info">Stack + Queue</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Account</label>
+                    <select id="withdrawAccount">
+                        ${options}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="number" id="withdrawAmount" placeholder="e.g., 2000">
+                </div>
+                <button class="btn btn-primary" onclick="withdrawMoney()">Withdraw</button>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadTransfer() {
+            // Generate account options for dropdown
+            let options = '<option value="">Select an account</option>';
+            let temp = accountHead;
+            while (temp) {
+                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name} ($${temp.balance})</option>`;
+                temp = temp.next;
+            }
+
+            const html = `
+                <div class="page-header">
+                    <h2>🔄 Transfer Money</h2>
+                    <span class="ds-info">Stack + Queue</span>
+                </div>
+
+                <div class="form-group">
+                    <label>From Account</label>
+                    <select id="fromAccount">
+                        ${options}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>To Account</label>
+                    <select id="toAccount">
+                        ${options}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="number" id="transferAmount" placeholder="e.g., 1000">
+                </div>
+                <button class="btn btn-primary" onclick="transferMoney()">Transfer</button>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadTransactions() {
+            let html = `
+                <div class="page-header">
+                    <h2>📜 Recent Transactions</h2>
+                    <span class="ds-info">Stack</span>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            let temp = transactionTop;
+            if (!temp) {
+                html += '<tr><td colspan="5" style="text-align: center;">No transactions found</td></tr>';
+            } else {
+                let count = 0;
+                while (temp && count < 10) {
+                    const acc = findAccount(temp.accNo);
+                    let details = '-';
+                    if (temp.type === 'TRANSFER') {
+                        const toAcc = findAccount(temp.toAccNo);
+                        details = `To: ${temp.toAccNo} (${toAcc ? toAcc.name : 'Unknown'})`;
+                    }
+
+                    html += `
+                        <tr>
+                            <td>${temp.id}</td>
+                            <td>${temp.accNo} (${acc ? acc.name : 'Unknown'})</td>
+                            <td><span class="badge badge-${temp.type}">${temp.type}</span></td>
+                            <td>$${temp.amount.toFixed(2)}</td>
+                            <td>${details}</td>
+                        </tr>
+                    `;
+                    temp = temp.next;
+                    count++;
+                }
+            }
+
+            html += '</tbody></table></div>';
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadRequests() {
+            let html = `
+                <div class="page-header">
+                    <h2>⏳ Pending Requests</h2>
+                    <span class="ds-info">Queue</span>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="processNextRequest()">Process Next Request</button>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            let temp = requestFront;
+            if (!temp) {
+                html += '<tr><td colspan="5" style="text-align: center;">No pending requests</td></tr>';
+            } else {
+                while (temp) {
+                    const acc = findAccount(temp.accNo);
+                    let details = '-';
+                    if (temp.type === 'TRANSFER') {
+                        const toAcc = findAccount(temp.toAccNo);
+                        details = `To: ${temp.toAccNo} (${toAcc ? toAcc.name : 'Unknown'})`;
+                    }
+
+                    html += `
+                        <tr>
+                            <td>${temp.id}</td>
+                            <td>${temp.accNo} (${acc ? acc.name : 'Unknown'})</td>
+                            <td><span class="badge badge-${temp.type}">${temp.type}</span></td>
+                            <td>$${temp.amount.toFixed(2)}</td>
+                            <td>${details}</td>
+                        </tr>
+                    `;
+                    temp = temp.next;
+                }
+            }
+
+            html += '</tbody></table></div>';
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function loadAddRequest() {
+            const html = `
+                <div class="page-header">
+                    <h2>📝 Add New Request</h2>
+                    <span class="ds-info">Queue</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Request Type</label>
+                    <select id="requestType" onchange="toggleReceiverField()">
+                        <option value="DEPOSIT">Deposit</option>
+                        <option value="WITHDRAW">Withdraw</option>
+                        <option value="TRANSFER">Transfer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Account Number</label>
+                    <input type="number" id="requestAccount" placeholder="e.g., 1001">
+                </div>
+                <div class="form-group" id="receiverAccountGroup" style="display: none;">
+                    <label>Receiver Account Number</label>
+                    <input type="number" id="receiverAccount" placeholder="e.g., 1002">
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="number" id="requestAmount" placeholder="e.g., 1000">
+                </div>
+                <button class="btn btn-primary" onclick="addRequest()">Add Request</button>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        // ========== ACCOUNT FUNCTIONS ==========
+
+        function createAccount() {
+            const accNo = parseInt(document.getElementById('accNo').value);
+            const accName = document.getElementById('accName').value.trim();
+
+            if (!accNo || !accName) {
+                showAlert('Please enter account number and name!', 'error');
+                return;
+            }
+
+            // Check if account already exists
+            let temp = accountHead;
+            while (temp) {
+                if (temp.accNo === accNo) {
+                    showAlert('Account number already exists!', 'error');
+                    return;
+                }
+                temp = temp.next;
+            }
+
+            // Create new account
+            const newAccount = new Account(accNo, accName);
+            
+            if (!accountHead) {
+                accountHead = newAccount;
+            } else {
+                temp = accountHead;
+                while (temp.next) {
+                    temp = temp.next;
+                }
+                temp.next = newAccount;
+            }
+
+            showAlert(`Account ${accNo} (${accName}) created successfully!`);
+            document.getElementById('accNo').value = '';
+            document.getElementById('accName').value = '';
+        }
+
+        function findAccount(accNo) {
+            let temp = accountHead;
+            while (temp) {
+                if (temp.accNo === accNo) return temp;
+                temp = temp.next;
+            }
+            return null;
+        }
+
+        function showAccountDetails() {
+            const accNo = parseInt(document.getElementById('searchAccountSelect').value);
+            if (!accNo) {
+                document.getElementById('accountDetailsContainer').innerHTML = '';
+                return;
+            }
+
+            const acc = findAccount(accNo);
+            if (acc) {
+                // Find recent transactions for this account
+                let transactions = [];
+                let temp = transactionTop;
+                while (temp && transactions.length < 5) {
+                    if (temp.accNo === accNo || (temp.type === 'TRANSFER' && temp.toAccNo === accNo)) {
+                        transactions.push(temp);
+                    }
+                    temp = temp.next;
+                }
+
+                let transactionsHtml = '';
+                if (transactions.length > 0) {
+                    transactionsHtml = '<h4 style="margin: 20px 0 10px;">Recent Transactions</h4><table><tr><th>ID</th><th>Type</th><th>Amount</th><th>Details</th></tr>';
+                    transactions.forEach(t => {
+                        let details = '-';
+                        if (t.type === 'TRANSFER') {
+                            if (t.accNo === accNo) {
+                                details = `Sent to: ${t.toAccNo}`;
+                            } else {
+                                details = `Received from: ${t.accNo}`;
+                            }
+                        }
+                        transactionsHtml += `<tr>
+                            <td>${t.id}</td>
+                            <td><span class="badge badge-${t.type}">${t.type}</span></td>
+                            <td>$${t.amount.toFixed(2)}</td>
+                            <td>${details}</td>
+                        </tr>`;
+                    });
+                    transactionsHtml += '</table>';
+                }
+
+                const html = `
+                    <div class="account-details-card">
+                        <h3 style="margin-bottom: 20px;">Account Details</h3>
+                        <div class="detail-row">
+                            <div class="detail-label">Account Number:</div>
+                            <div class="detail-value">${acc.accNo}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Holder Name:</div>
+                            <div class="detail-value">${acc.name}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Current Balance:</div>
+                            <div class="detail-value">$${acc.balance.toFixed(2)}</div>
+                        </div>
+                        ${transactionsHtml}
+                    </div>
+                `;
+                document.getElementById('accountDetailsContainer').innerHTML = html;
+            }
+        }
+
+        function deleteAccount(accNo) {
+            if (!accountHead) return;
+
+            let temp = accountHead;
+            let prev = null;
+
+            while (temp && temp.accNo !== accNo) {
+                prev = temp;
+                temp = temp.next;
+            }
+
+            if (!temp) {
+                showAlert('Account not found!', 'error');
+                return;
+            }
+
+            if (temp.balance > 0) {
+                if (!confirm(`This account has balance $${temp.balance}. Still want to delete?`)) {
+                    return;
+                }
+            }
+
+            if (!prev) {
+                accountHead = temp.next;
+            } else {
+                prev.next = temp.next;
+            }
+
+            showAlert(`Account ${accNo} deleted successfully!`);
+            loadViewAccounts(); // Refresh the page
+        }
+
+        // ========== TRANSACTION FUNCTIONS ==========
+
+        function pushTransaction(accNo, type, amount, toAccNo = null) {
+            const newTrans = new Transaction(nextTransactionId++, accNo, type, amount, toAccNo);
+            newTrans.next = transactionTop;
+            transactionTop = newTrans;
+        }
+
+        function undoLastTransaction() {
+            if (!transactionTop) {
+                showAlert('No transactions to undo!', 'error');
+                return;
+            }
+
+            const lastTrans = transactionTop;
+            const acc = findAccount(lastTrans.accNo);
+
+            if (acc) {
+                if (lastTrans.type === 'DEPOSIT') {
+                    acc.balance -= lastTrans.amount;
+                    showAlert(`Undo Deposit: $${lastTrans.amount} reversed`);
+                } else if (lastTrans.type === 'WITHDRAW') {
+                    acc.balance += lastTrans.amount;
+                    showAlert(`Undo Withdrawal: $${lastTrans.amount} reversed`);
+                } else if (lastTrans.type === 'TRANSFER') {
+                    const fromAcc = findAccount(lastTrans.accNo);
+                    const toAcc = findAccount(lastTrans.toAccNo);
+                    if (fromAcc && toAcc) {
+                        fromAcc.balance += lastTrans.amount;
+                        toAcc.balance -= lastTrans.amount;
+                        showAlert(`Undo Transfer: $${lastTrans.amount} reversed`);
+                    }
+                }
+            }
+
+            transactionTop = lastTrans.next;
+            loadDashboard(); // Go back to dashboard after undo
+        }
+
+        // ========== QUEUE FUNCTIONS ==========
+
+        function enqueueRequest(accNo, type, amount, toAccNo = null) {
+            const newRequest = new Request(nextRequestId++, accNo, type, amount, toAccNo);
+
+            if (!requestRear) {
+                requestFront = requestRear = newRequest;
+            } else {
+                requestRear.next = newRequest;
+                requestRear = newRequest;
+            }
+
+            showAlert(`Request #${newRequest.id} added to queue!`, 'info');
+        }
+
+        function processNextRequest() {
+            if (!requestFront) {
+                showAlert('No pending requests!', 'error');
+                return;
+            }
+
+            const current = requestFront;
+            const acc = findAccount(current.accNo);
+
+            if (!acc) {
+                showAlert(`Account ${current.accNo} not found!`, 'error');
+            } else {
+                if (current.type === 'DEPOSIT') {
+                    acc.balance += current.amount;
+                    pushTransaction(current.accNo, 'DEPOSIT', current.amount);
+                    showAlert(`Deposit Request #${current.id} processed`);
+                } 
+                else if (current.type === 'WITHDRAW') {
+                    if (acc.balance >= current.amount) {
+                        acc.balance -= current.amount;
+                        pushTransaction(current.accNo, 'WITHDRAW', current.amount);
+                        showAlert(`Withdrawal Request #${current.id} processed`);
+                    } else {
+                        showAlert(`Insufficient balance! (Current: $${acc.balance})`, 'error');
+                    }
+                }
+                else if (current.type === 'TRANSFER') {
+                    const toAcc = findAccount(current.toAccNo);
+                    if (!toAcc) {
+                        showAlert(`Receiver account ${current.toAccNo} not found!`, 'error');
+                    } else if (acc.balance >= current.amount) {
+                        acc.balance -= current.amount;
+                        toAcc.balance += current.amount;
+                        pushTransaction(current.accNo, 'TRANSFER', current.amount, current.toAccNo);
+                        showAlert(`Transfer Request #${current.id} processed`);
+                    } else {
+                        showAlert(`Insufficient balance! (Current: $${acc.balance})`, 'error');
+                    }
+                }
+            }
+
+            // Dequeue
+            requestFront = current.next;
+            if (!requestFront) requestRear = null;
+
+            loadRequests(); // Refresh requests page
+        }
+
+        // ========== BANK OPERATIONS ==========
+
+        function depositMoney() {
+            const accSelect = document.getElementById('depositAccount');
+            const amount = parseFloat(document.getElementById('depositAmount').value);
+
+            if (!accSelect.value) {
+                showAlert('Please select an account!', 'error');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showAlert('Please enter a valid amount!', 'error');
+                return;
+            }
+
+            const acc = findAccount(parseInt(accSelect.value));
+            if (acc) {
+                acc.balance += amount;
+                pushTransaction(acc.accNo, 'DEPOSIT', amount);
+                showAlert(`$${amount} deposited successfully!`);
+                loadDashboard();
+            }
+        }
+
+        function withdrawMoney() {
+            const accSelect = document.getElementById('withdrawAccount');
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+
+            if (!accSelect.value) {
+                showAlert('Please select an account!', 'error');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showAlert('Please enter a valid amount!', 'error');
+                return;
+            }
+
+            const acc = findAccount(parseInt(accSelect.value));
+            if (acc) {
+                if (acc.balance >= amount) {
+                    acc.balance -= amount;
+                    pushTransaction(acc.accNo, 'WITHDRAW', amount);
+                    showAlert(`$${amount} withdrawn successfully!`);
+                    loadDashboard();
+                } else {
+                    showAlert(`Insufficient balance! (Current: $${acc.balance})`, 'error');
+                }
+            }
+        }
+
+        function transferMoney() {
+            const fromSelect = document.getElementById('fromAccount');
+            const toSelect = document.getElementById('toAccount');
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+
+            if (!fromSelect.value || !toSelect.value) {
+                showAlert('Please select both accounts!', 'error');
+                return;
+            }
+
+            if (fromSelect.value === toSelect.value) {
+                showAlert('Sender and receiver cannot be the same!', 'error');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showAlert('Please enter a valid amount!', 'error');
+                return;
+            }
+
+            const fromAcc = findAccount(parseInt(fromSelect.value));
+            const toAcc = findAccount(parseInt(toSelect.value));
+
+            if (fromAcc && toAcc) {
+                if (fromAcc.balance >= amount) {
+                    fromAcc.balance -= amount;
+                    toAcc.balance += amount;
+                    pushTransaction(fromAcc.accNo, 'TRANSFER', amount, toAcc.accNo);
+                    showAlert(`$${amount} transferred successfully!`);
+                    loadDashboard();
+                } else {
+                    showAlert(`Insufficient balance in sender account! (Current: $${fromAcc.balance})`, 'error');
+                }
+            }
+        }
+
+        function addRequest() {
+            const type = document.getElementById('requestType').value;
+            const accNo = parseInt(document.getElementById('requestAccount').value);
+            const amount = parseFloat(document.getElementById('requestAmount').value);
+            const toAccNo = document.getElementById('receiverAccount') ? 
+                           parseInt(document.getElementById('receiverAccount').value) : null;
+
+            if (!accNo || !amount || amount <= 0) {
+                showAlert('Please enter valid account number and amount!', 'error');
+                return;
+            }
+
+            if (type === 'TRANSFER' && !toAccNo) {
+                showAlert('Please enter receiver account number!', 'error');
+                return;
+            }
+
+            if (type === 'TRANSFER' && accNo === toAccNo) {
+                showAlert('Sender and receiver cannot be the same!', 'error');
+                return;
+            }
+
+            enqueueRequest(accNo, type, amount, toAccNo);
+            loadRequests();
+        }
+
+        function toggleReceiverField() {
+            const type = document.getElementById('requestType').value;
+            const receiverGroup = document.getElementById('receiverAccountGroup');
+            if (receiverGroup) {
+                receiverGroup.style.display = type === 'TRANSFER' ? 'block' : 'none';
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('accNo').value = '';
+            document.getElementById('accName').value = '';
+        }
+
+        // Load dashboard by default
+        window.onload = function() {
+            loadDashboard();
+        };
+    </script>
+</body>
+</html>
