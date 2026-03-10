@@ -337,6 +337,82 @@
             color: #333;
             flex: 1;
         }
+
+        /* Search Box */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .modal-content h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -371,6 +447,18 @@
         <!-- Main Content Area -->
         <div class="page-content" id="mainContent">
             <!-- Dynamic content will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <h3>⚠️ Confirm Delete</h3>
+            <p id="deleteMessage"></p>
+            <div class="modal-buttons">
+                <button class="btn btn-danger" onclick="confirmDelete()">Yes, Delete</button>
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -419,6 +507,8 @@
         
         let nextTransactionId = 1;
         let nextRequestId = 1;
+        
+        let accountToDelete = null;  // For delete confirmation
 
         // ========== UTILITY FUNCTIONS ==========
 
@@ -616,7 +706,6 @@
                                 <th>Account No</th>
                                 <th>Holder Name</th>
                                 <th>Balance</th>
-                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -624,7 +713,7 @@
 
             let temp = accountHead;
             if (!temp) {
-                html += '<tr><td colspan="4" style="text-align: center;">No accounts found</td></tr>';
+                html += '<tr><td colspan="3" style="text-align: center;">No accounts found</td></tr>';
             } else {
                 while (temp) {
                     html += `
@@ -632,9 +721,6 @@
                             <td>${temp.accNo}</td>
                             <td>${temp.name}</td>
                             <td>$${temp.balance.toFixed(2)}</td>
-                            <td>
-                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.9em;" onclick="deleteAccount(${temp.accNo})">Delete</button>
-                            </td>
                         </tr>
                     `;
                     temp = temp.next;
@@ -646,41 +732,23 @@
         }
 
         function loadFindAccount() {
-            // Generate account options for dropdown
-            let options = '<option value="">Select an account</option>';
-            let temp = accountHead;
-            while (temp) {
-                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name}</option>`;
-                temp = temp.next;
-            }
-
             const html = `
                 <div class="page-header">
                     <h2>🔍 Find Account Details</h2>
                     <span class="ds-info">Linked List</span>
                 </div>
 
-                <div class="form-group">
-                    <label>Select Account</label>
-                    <select id="searchAccountSelect" onchange="showAccountDetails()">
-                        ${options}
-                    </select>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search by Account Number or Name..." onkeyup="searchAccount()">
+                    <button class="search-btn" onclick="searchAccount()">Search</button>
                 </div>
 
-                <div id="accountDetailsContainer"></div>
+                <div id="searchResults"></div>
             `;
             document.getElementById('mainContent').innerHTML = html;
         }
 
         function loadDeposit() {
-            // Generate account options for dropdown
-            let options = '<option value="">Select an account</option>';
-            let temp = accountHead;
-            while (temp) {
-                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name} ($${temp.balance})</option>`;
-                temp = temp.next;
-            }
-
             const html = `
                 <div class="page-header">
                     <h2>💰 Deposit Money</h2>
@@ -688,10 +756,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Select Account</label>
-                    <select id="depositAccount">
-                        ${options}
-                    </select>
+                    <label>Account Number</label>
+                    <input type="number" id="depositAccount" placeholder="Enter account number">
                 </div>
                 <div class="form-group">
                     <label>Amount</label>
@@ -703,14 +769,6 @@
         }
 
         function loadWithdraw() {
-            // Generate account options for dropdown
-            let options = '<option value="">Select an account</option>';
-            let temp = accountHead;
-            while (temp) {
-                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name} ($${temp.balance})</option>`;
-                temp = temp.next;
-            }
-
             const html = `
                 <div class="page-header">
                     <h2>💸 Withdraw Money</h2>
@@ -718,10 +776,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Select Account</label>
-                    <select id="withdrawAccount">
-                        ${options}
-                    </select>
+                    <label>Account Number</label>
+                    <input type="number" id="withdrawAccount" placeholder="Enter account number">
                 </div>
                 <div class="form-group">
                     <label>Amount</label>
@@ -733,14 +789,6 @@
         }
 
         function loadTransfer() {
-            // Generate account options for dropdown
-            let options = '<option value="">Select an account</option>';
-            let temp = accountHead;
-            while (temp) {
-                options += `<option value="${temp.accNo}">${temp.accNo} - ${temp.name} ($${temp.balance})</option>`;
-                temp = temp.next;
-            }
-
             const html = `
                 <div class="page-header">
                     <h2>🔄 Transfer Money</h2>
@@ -748,16 +796,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label>From Account</label>
-                    <select id="fromAccount">
-                        ${options}
-                    </select>
+                    <label>From Account Number</label>
+                    <input type="number" id="fromAccount" placeholder="Enter sender account number">
                 </div>
                 <div class="form-group">
-                    <label>To Account</label>
-                    <select id="toAccount">
-                        ${options}
-                    </select>
+                    <label>To Account Number</label>
+                    <input type="number" id="toAccount" placeholder="Enter receiver account number">
                 </div>
                 <div class="form-group">
                     <label>Amount</label>
@@ -954,23 +998,41 @@
             return null;
         }
 
-        function showAccountDetails() {
-            const accNo = parseInt(document.getElementById('searchAccountSelect').value);
-            if (!accNo) {
-                document.getElementById('accountDetailsContainer').innerHTML = '';
+        function searchAccount() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const resultsDiv = document.getElementById('searchResults');
+
+            if (!searchTerm) {
+                resultsDiv.innerHTML = '';
                 return;
             }
 
-            const acc = findAccount(accNo);
-            if (acc) {
+            // Search by account number or name
+            let results = [];
+            let temp = accountHead;
+            while (temp) {
+                if (temp.accNo.toString().includes(searchTerm) || 
+                    temp.name.toLowerCase().includes(searchTerm)) {
+                    results.push(temp);
+                }
+                temp = temp.next;
+            }
+
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #666;">No accounts found</p>';
+                return;
+            }
+
+            let html = '';
+            results.forEach(acc => {
                 // Find recent transactions for this account
                 let transactions = [];
-                let temp = transactionTop;
-                while (temp && transactions.length < 5) {
-                    if (temp.accNo === accNo || (temp.type === 'TRANSFER' && temp.toAccNo === accNo)) {
-                        transactions.push(temp);
+                let transTemp = transactionTop;
+                while (transTemp && transactions.length < 3) {
+                    if (transTemp.accNo === acc.accNo || (transTemp.type === 'TRANSFER' && transTemp.toAccNo === acc.accNo)) {
+                        transactions.push(transTemp);
                     }
-                    temp = temp.next;
+                    transTemp = transTemp.next;
                 }
 
                 let transactionsHtml = '';
@@ -979,7 +1041,7 @@
                     transactions.forEach(t => {
                         let details = '-';
                         if (t.type === 'TRANSFER') {
-                            if (t.accNo === accNo) {
+                            if (t.accNo === acc.accNo) {
                                 details = `Sent to: ${t.toAccNo}`;
                             } else {
                                 details = `Received from: ${t.accNo}`;
@@ -995,9 +1057,12 @@
                     transactionsHtml += '</table>';
                 }
 
-                const html = `
+                html += `
                     <div class="account-details-card">
-                        <h3 style="margin-bottom: 20px;">Account Details</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>Account Details</h3>
+                            <button class="btn btn-danger" onclick="showDeleteConfirmation(${acc.accNo})">Delete Account</button>
+                        </div>
                         <div class="detail-row">
                             <div class="detail-label">Account Number:</div>
                             <div class="detail-value">${acc.accNo}</div>
@@ -1013,40 +1078,55 @@
                         ${transactionsHtml}
                     </div>
                 `;
-                document.getElementById('accountDetailsContainer').innerHTML = html;
-            }
+            });
+
+            resultsDiv.innerHTML = html;
         }
 
-        function deleteAccount(accNo) {
-            if (!accountHead) return;
+        function showDeleteConfirmation(accNo) {
+            const acc = findAccount(accNo);
+            if (!acc) return;
+
+            accountToDelete = accNo;
+            const modal = document.getElementById('deleteModal');
+            const message = document.getElementById('deleteMessage');
+            
+            if (acc.balance > 0) {
+                message.textContent = `Account ${accNo} has balance $${acc.balance}. Are you sure you want to delete?`;
+            } else {
+                message.textContent = `Are you sure you want to delete account ${accNo}?`;
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            accountToDelete = null;
+        }
+
+        function confirmDelete() {
+            if (!accountToDelete) return;
 
             let temp = accountHead;
             let prev = null;
 
-            while (temp && temp.accNo !== accNo) {
+            while (temp && temp.accNo !== accountToDelete) {
                 prev = temp;
                 temp = temp.next;
             }
 
-            if (!temp) {
-                showAlert('Account not found!', 'error');
-                return;
-            }
-
-            if (temp.balance > 0) {
-                if (!confirm(`This account has balance $${temp.balance}. Still want to delete?`)) {
-                    return;
+            if (temp) {
+                if (!prev) {
+                    accountHead = temp.next;
+                } else {
+                    prev.next = temp.next;
                 }
+                showAlert(`Account ${accountToDelete} deleted successfully!`);
             }
 
-            if (!prev) {
-                accountHead = temp.next;
-            } else {
-                prev.next = temp.next;
-            }
-
-            showAlert(`Account ${accNo} deleted successfully!`);
-            loadViewAccounts(); // Refresh the page
+            closeDeleteModal();
+            searchAccount(); // Refresh search results
         }
 
         // ========== TRANSACTION FUNCTIONS ==========
@@ -1085,7 +1165,7 @@
             }
 
             transactionTop = lastTrans.next;
-            loadDashboard(); // Go back to dashboard after undo
+            loadDashboard();
         }
 
         // ========== QUEUE FUNCTIONS ==========
@@ -1148,17 +1228,17 @@
             requestFront = current.next;
             if (!requestFront) requestRear = null;
 
-            loadRequests(); // Refresh requests page
+            loadRequests();
         }
 
         // ========== BANK OPERATIONS ==========
 
         function depositMoney() {
-            const accSelect = document.getElementById('depositAccount');
+            const accNo = parseInt(document.getElementById('depositAccount').value);
             const amount = parseFloat(document.getElementById('depositAmount').value);
 
-            if (!accSelect.value) {
-                showAlert('Please select an account!', 'error');
+            if (!accNo) {
+                showAlert('Please enter account number!', 'error');
                 return;
             }
 
@@ -1167,21 +1247,26 @@
                 return;
             }
 
-            const acc = findAccount(parseInt(accSelect.value));
-            if (acc) {
-                acc.balance += amount;
-                pushTransaction(acc.accNo, 'DEPOSIT', amount);
-                showAlert(`$${amount} deposited successfully!`);
-                loadDashboard();
+            const acc = findAccount(accNo);
+            if (!acc) {
+                showAlert(`Account ${accNo} not found!`, 'error');
+                return;
             }
+
+            acc.balance += amount;
+            pushTransaction(acc.accNo, 'DEPOSIT', amount);
+            showAlert(`$${amount} deposited successfully!`);
+            
+            document.getElementById('depositAccount').value = '';
+            document.getElementById('depositAmount').value = '';
         }
 
         function withdrawMoney() {
-            const accSelect = document.getElementById('withdrawAccount');
+            const accNo = parseInt(document.getElementById('withdrawAccount').value);
             const amount = parseFloat(document.getElementById('withdrawAmount').value);
 
-            if (!accSelect.value) {
-                showAlert('Please select an account!', 'error');
+            if (!accNo) {
+                showAlert('Please enter account number!', 'error');
                 return;
             }
 
@@ -1190,30 +1275,35 @@
                 return;
             }
 
-            const acc = findAccount(parseInt(accSelect.value));
-            if (acc) {
-                if (acc.balance >= amount) {
-                    acc.balance -= amount;
-                    pushTransaction(acc.accNo, 'WITHDRAW', amount);
-                    showAlert(`$${amount} withdrawn successfully!`);
-                    loadDashboard();
-                } else {
-                    showAlert(`Insufficient balance! (Current: $${acc.balance})`, 'error');
-                }
+            const acc = findAccount(accNo);
+            if (!acc) {
+                showAlert(`Account ${accNo} not found!`, 'error');
+                return;
+            }
+
+            if (acc.balance >= amount) {
+                acc.balance -= amount;
+                pushTransaction(acc.accNo, 'WITHDRAW', amount);
+                showAlert(`$${amount} withdrawn successfully!`);
+                
+                document.getElementById('withdrawAccount').value = '';
+                document.getElementById('withdrawAmount').value = '';
+            } else {
+                showAlert(`Insufficient balance! (Current: $${acc.balance})`, 'error');
             }
         }
 
         function transferMoney() {
-            const fromSelect = document.getElementById('fromAccount');
-            const toSelect = document.getElementById('toAccount');
+            const fromAccNo = parseInt(document.getElementById('fromAccount').value);
+            const toAccNo = parseInt(document.getElementById('toAccount').value);
             const amount = parseFloat(document.getElementById('transferAmount').value);
 
-            if (!fromSelect.value || !toSelect.value) {
-                showAlert('Please select both accounts!', 'error');
+            if (!fromAccNo || !toAccNo) {
+                showAlert('Please enter both account numbers!', 'error');
                 return;
             }
 
-            if (fromSelect.value === toSelect.value) {
+            if (fromAccNo === toAccNo) {
                 showAlert('Sender and receiver cannot be the same!', 'error');
                 return;
             }
@@ -1223,19 +1313,30 @@
                 return;
             }
 
-            const fromAcc = findAccount(parseInt(fromSelect.value));
-            const toAcc = findAccount(parseInt(toSelect.value));
+            const fromAcc = findAccount(fromAccNo);
+            const toAcc = findAccount(toAccNo);
 
-            if (fromAcc && toAcc) {
-                if (fromAcc.balance >= amount) {
-                    fromAcc.balance -= amount;
-                    toAcc.balance += amount;
-                    pushTransaction(fromAcc.accNo, 'TRANSFER', amount, toAcc.accNo);
-                    showAlert(`$${amount} transferred successfully!`);
-                    loadDashboard();
-                } else {
-                    showAlert(`Insufficient balance in sender account! (Current: $${fromAcc.balance})`, 'error');
-                }
+            if (!fromAcc) {
+                showAlert(`Sender account ${fromAccNo} not found!`, 'error');
+                return;
+            }
+
+            if (!toAcc) {
+                showAlert(`Receiver account ${toAccNo} not found!`, 'error');
+                return;
+            }
+
+            if (fromAcc.balance >= amount) {
+                fromAcc.balance -= amount;
+                toAcc.balance += amount;
+                pushTransaction(fromAcc.accNo, 'TRANSFER', amount, toAcc.accNo);
+                showAlert(`$${amount} transferred successfully!`);
+                
+                document.getElementById('fromAccount').value = '';
+                document.getElementById('toAccount').value = '';
+                document.getElementById('transferAmount').value = '';
+            } else {
+                showAlert(`Insufficient balance in sender account! (Current: $${fromAcc.balance})`, 'error');
             }
         }
 
@@ -1262,7 +1363,12 @@
             }
 
             enqueueRequest(accNo, type, amount, toAccNo);
-            loadRequests();
+            
+            document.getElementById('requestAccount').value = '';
+            document.getElementById('requestAmount').value = '';
+            if (document.getElementById('receiverAccount')) {
+                document.getElementById('receiverAccount').value = '';
+            }
         }
 
         function toggleReceiverField() {
