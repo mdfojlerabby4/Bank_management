@@ -60,6 +60,16 @@
             font-weight: 500;
         }
 
+        .auto-save-badge {
+            background: #28a745;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: 10px;
+            display: inline-block;
+        }
+
         /* Navigation */
         .top-nav {
             background: white;
@@ -84,6 +94,7 @@
             font-weight: 500;
             transition: all 0.3s;
             background: #f8f9fa;
+            cursor: pointer;
         }
 
         .nav-link:hover {
@@ -413,13 +424,34 @@
             gap: 10px;
             justify-content: center;
         }
+
+        .save-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 0.9em;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            animation: fadeInOut 2s ease;
+            display: none;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🏦 Bank Transaction Management System</h1>
-            <p>A complete banking system using Stack, Queue & Linked List</p>
+            <h1>🏦 Bank Transaction Management System
+            </h1>
             <div class="data-structures">
                 <span class="ds-badge">🔗 Linked List (Accounts)</span>
                 <span class="ds-badge">📚 Stack (Transactions)</span>
@@ -430,17 +462,17 @@
         <!-- Navigation Menu -->
         <div class="top-nav">
             <div class="nav-links">
-                <a href="#dashboard" class="nav-link active" onclick="changePage('dashboard')">📊 Dashboard</a>
-                <a href="#create-account" class="nav-link" onclick="changePage('create-account')">➕ Create Account</a>
-                <a href="#view-accounts" class="nav-link" onclick="changePage('view-accounts')">👥 All Accounts</a>
-                <a href="#find-account" class="nav-link" onclick="changePage('find-account')">🔍 Find Account</a>
-                <a href="#deposit" class="nav-link" onclick="changePage('deposit')">💰 Deposit</a>
-                <a href="#withdraw" class="nav-link" onclick="changePage('withdraw')">💸 Withdraw</a>
-                <a href="#transfer" class="nav-link" onclick="changePage('transfer')">🔄 Transfer</a>
-                <a href="#transactions" class="nav-link" onclick="changePage('transactions')">📜 Transactions</a>
-                <a href="#requests" class="nav-link" onclick="changePage('requests')">⏳ Requests</a>
-                <a href="#add-request" class="nav-link" onclick="changePage('add-request')">📝 Add Request</a>
-                <a href="#undo" class="nav-link" onclick="undoLastTransaction()">↩️ Undo</a>
+                <a class="nav-link active" onclick="changePage('dashboard', this)">📊 Dashboard</a>
+                <a class="nav-link" onclick="changePage('create-account', this)">➕ Create Account</a>
+                <a class="nav-link" onclick="changePage('view-accounts', this)">👥 All Accounts</a>
+                <a class="nav-link" onclick="changePage('find-account', this)">🔍 Find Account</a>
+                <a class="nav-link" onclick="changePage('deposit', this)">💰 Deposit</a>
+                <a class="nav-link" onclick="changePage('withdraw', this)">💸 Withdraw</a>
+                <a class="nav-link" onclick="changePage('transfer', this)">🔄 Transfer</a>
+                <a class="nav-link" onclick="changePage('transactions', this)">📜 Transactions</a>
+                <a class="nav-link" onclick="changePage('requests', this)">⏳ Requests</a>
+                <a class="nav-link" onclick="changePage('add-request', this)">📝 Add Request</a>
+                <a class="nav-link" onclick="undoLastTransaction(this)">↩️ Undo</a>
             </div>
         </div>
 
@@ -449,6 +481,9 @@
             <!-- Dynamic content will be loaded here -->
         </div>
     </div>
+
+    <!-- Save Indicator -->
+    <div class="save-indicator" id="saveIndicator">💾 Data Auto-Saved</div>
 
     <!-- Delete Confirmation Modal -->
     <div class="modal" id="deleteModal">
@@ -463,52 +498,176 @@
     </div>
 
     <script>
-        // ========== DATA STRUCTURES ==========
+        // ========== C-STYLE DATA STRUCTURES ==========
 
-        // Account (Linked List)
-        class Account {
-            constructor(accNo, name) {
-                this.accNo = accNo;
-                this.name = name;
-                this.balance = 0;
-                this.next = null;
-            }
+        // Account structure (Linked List Node)
+        function Account(accNo, name) {
+            this.accNo = accNo;
+            this.name = name;
+            this.balance = 0.0;
+            this.next = NULL;
         }
 
-        // Transaction (Stack)
-        class Transaction {
-            constructor(id, accNo, type, amount, toAccNo = null) {
-                this.id = id;
-                this.accNo = accNo;
-                this.type = type;
-                this.amount = amount;
-                this.toAccNo = toAccNo;
-                this.next = null;
-            }
+        // Transaction structure (Stack Node)
+        function Transaction(id, accNo, type, amount, toAccNo) {
+            this.id = id;
+            this.accNo = accNo;
+            this.type = type;        // "DEPOSIT", "WITHDRAW", "TRANSFER"
+            this.amount = amount;
+            this.toAccNo = toAccNo || null;
+            this.next = NULL;
         }
 
-        // Request (Queue)
-        class Request {
-            constructor(id, accNo, type, amount, toAccNo = null) {
-                this.id = id;
-                this.accNo = accNo;
-                this.type = type;
-                this.amount = amount;
-                this.toAccNo = toAccNo;
-                this.next = null;
-            }
+        // Request structure (Queue Node)
+        function Request(id, accNo, type, amount, toAccNo) {
+            this.id = id;
+            this.accNo = accNo;
+            this.type = type;
+            this.amount = amount;
+            this.toAccNo = toAccNo || null;
+            this.next = NULL;
         }
 
-        // ========== GLOBAL VARIABLES ==========
-        let accountHead = null;      // Linked List head
-        let transactionTop = null;   // Stack top
-        let requestFront = null;     // Queue front
-        let requestRear = null;      // Queue rear
+        // NULL pointer in C style
+        const NULL = null;
+
+        // ========== GLOBAL VARIABLES (C Style) ==========
+        let accountHead = NULL;      // Linked List head pointer
+        let transactionTop = NULL;   // Stack top pointer
+        let requestFront = NULL;     // Queue front pointer
+        let requestRear = NULL;      // Queue rear pointer
         
         let nextTransactionId = 1;
         let nextRequestId = 1;
         
-        let accountToDelete = null;  // For delete confirmation
+        let accountToDelete = NULL;  // For delete confirmation
+
+        // ========== AUTO-SAVE FUNCTIONS ==========
+
+        function showSaveIndicator() {
+            const indicator = document.getElementById('saveIndicator');
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 2000);
+        }
+
+        function saveToDatabase() {
+            const database = {
+                accounts: [],
+                transactions: [],
+                requests: [],
+                nextTransactionId: nextTransactionId,
+                nextRequestId: nextRequestId
+            };
+
+            // Save accounts (Linked List)
+            let accTemp = accountHead;
+            while (accTemp !== NULL) {
+                database.accounts.push({
+                    accNo: accTemp.accNo,
+                    name: accTemp.name,
+                    balance: accTemp.balance
+                });
+                accTemp = accTemp.next;
+            }
+
+            // Save transactions (Stack)
+            let transTemp = transactionTop;
+            while (transTemp !== NULL) {
+                database.transactions.push({
+                    id: transTemp.id,
+                    accNo: transTemp.accNo,
+                    type: transTemp.type,
+                    amount: transTemp.amount,
+                    toAccNo: transTemp.toAccNo
+                });
+                transTemp = transTemp.next;
+            }
+
+            // Save requests (Queue)
+            let reqTemp = requestFront;
+            while (reqTemp !== NULL) {
+                database.requests.push({
+                    id: reqTemp.id,
+                    accNo: reqTemp.accNo,
+                    type: reqTemp.type,
+                    amount: reqTemp.amount,
+                    toAccNo: reqTemp.toAccNo
+                });
+                reqTemp = reqTemp.next;
+            }
+
+            localStorage.setItem('bankDatabase', JSON.stringify(database));
+            showSaveIndicator();
+        }
+
+        function loadFromDatabase() {
+            const savedData = localStorage.getItem('bankDatabase');
+            if (!savedData) {
+                return; // No saved data, start fresh
+            }
+
+            const database = JSON.parse(savedData);
+
+            // Clear current data structures
+            accountHead = NULL;
+            transactionTop = NULL;
+            requestFront = NULL;
+            requestRear = NULL;
+
+            // Load accounts (rebuild linked list)
+            if (database.accounts && database.accounts.length > 0) {
+                // Build linked list in original order
+                for (let i = 0; i < database.accounts.length; i++) {
+                    const acc = database.accounts[i];
+                    const newAccount = new Account(acc.accNo, acc.name);
+                    newAccount.balance = acc.balance;
+                    
+                    // Insert at the end
+                    if (accountHead === NULL) {
+                        accountHead = newAccount;
+                    } else {
+                        let temp = accountHead;
+                        while (temp.next !== NULL) {
+                            temp = temp.next;
+                        }
+                        temp.next = newAccount;
+                    }
+                }
+            }
+
+            // Load transactions (rebuild stack) - reverse to maintain order
+            if (database.transactions && database.transactions.length > 0) {
+                for (let i = database.transactions.length - 1; i >= 0; i--) {
+                    const trans = database.transactions[i];
+                    const newTrans = new Transaction(trans.id, trans.accNo, trans.type, trans.amount, trans.toAccNo);
+                    
+                    // Push to stack
+                    newTrans.next = transactionTop;
+                    transactionTop = newTrans;
+                }
+            }
+
+            // Load requests (rebuild queue)
+            if (database.requests && database.requests.length > 0) {
+                for (let i = 0; i < database.requests.length; i++) {
+                    const req = database.requests[i];
+                    const newReq = new Request(req.id, req.accNo, req.type, req.amount, req.toAccNo);
+                    
+                    // Enqueue
+                    if (requestRear === NULL) {
+                        requestFront = requestRear = newReq;
+                    } else {
+                        requestRear.next = newReq;
+                        requestRear = newReq;
+                    }
+                }
+            }
+
+            nextTransactionId = database.nextTransactionId || 1;
+            nextRequestId = database.nextRequestId || 1;
+        }
 
         // ========== UTILITY FUNCTIONS ==========
 
@@ -525,12 +684,14 @@
             }, 3000);
         }
 
-        function changePage(page) {
+        function changePage(page, element) {
             // Update active nav link
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            event.target.classList.add('active');
+            if (element) {
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                element.classList.add('active');
+            }
 
             // Load appropriate page
             switch(page) {
@@ -570,28 +731,28 @@
         // ========== PAGE LOADERS ==========
 
         function loadDashboard() {
-            // Count accounts
+            // Count accounts (traverse linked list)
             let accountCount = 0;
-            let totalBalance = 0;
+            let totalBalance = 0.0;
             let temp = accountHead;
-            while (temp) {
+            while (temp !== NULL) {
                 accountCount++;
                 totalBalance += temp.balance;
                 temp = temp.next;
             }
 
-            // Count transactions
+            // Count transactions (traverse stack)
             let transCount = 0;
             let transTemp = transactionTop;
-            while (transTemp) {
+            while (transTemp !== NULL) {
                 transCount++;
                 transTemp = transTemp.next;
             }
 
-            // Count requests
+            // Count requests (traverse queue)
             let reqCount = 0;
             let reqTemp = requestFront;
-            while (reqTemp) {
+            while (reqTemp !== NULL) {
                 reqCount++;
                 reqTemp = reqTemp.next;
             }
@@ -599,7 +760,7 @@
             let html = `
                 <div class="page-header">
                     <h2>📊 Dashboard</h2>
-                    <span class="ds-info">Linked List + Stack + Queue</span>
+                    <span class="ds-info">C Style: Linked List + Stack + Queue</span>
                 </div>
 
                 <div class="stats-grid">
@@ -642,7 +803,7 @@
 
             let count = 0;
             transTemp = transactionTop;
-            while (transTemp && count < 5) {
+            while (transTemp !== NULL && count < 5) {
                 const acc = findAccount(transTemp.accNo);
                 let details = '-';
                 if (transTemp.type === 'TRANSFER') {
@@ -675,7 +836,7 @@
             const html = `
                 <div class="page-header">
                     <h2>➕ Create New Account</h2>
-                    <span class="ds-info">Linked List</span>
+                    <span class="ds-info">C Style: Linked List</span>
                 </div>
 
                 <div class="form-group">
@@ -696,7 +857,7 @@
             let html = `
                 <div class="page-header">
                     <h2>👥 All Accounts</h2>
-                    <span class="ds-info">Linked List</span>
+                    <span class="ds-info">C Style: Linked List</span>
                 </div>
 
                 <div class="table-container">
@@ -712,10 +873,10 @@
             `;
 
             let temp = accountHead;
-            if (!temp) {
+            if (temp === NULL) {
                 html += '<tr><td colspan="3" style="text-align: center;">No accounts found</td></tr>';
             } else {
-                while (temp) {
+                while (temp !== NULL) {
                     html += `
                         <tr>
                             <td>${temp.accNo}</td>
@@ -735,7 +896,7 @@
             const html = `
                 <div class="page-header">
                     <h2>🔍 Find Account Details</h2>
-                    <span class="ds-info">Linked List</span>
+                    <span class="ds-info">C Style: Linked List</span>
                 </div>
 
                 <div class="search-box">
@@ -752,7 +913,7 @@
             const html = `
                 <div class="page-header">
                     <h2>💰 Deposit Money</h2>
-                    <span class="ds-info">Stack + Queue</span>
+                    <span class="ds-info">C Style: Stack</span>
                 </div>
 
                 <div class="form-group">
@@ -772,7 +933,7 @@
             const html = `
                 <div class="page-header">
                     <h2>💸 Withdraw Money</h2>
-                    <span class="ds-info">Stack + Queue</span>
+                    <span class="ds-info">C Style: Stack</span>
                 </div>
 
                 <div class="form-group">
@@ -792,7 +953,7 @@
             const html = `
                 <div class="page-header">
                     <h2>🔄 Transfer Money</h2>
-                    <span class="ds-info">Stack + Queue</span>
+                    <span class="ds-info">C Style: Stack</span>
                 </div>
 
                 <div class="form-group">
@@ -816,7 +977,7 @@
             let html = `
                 <div class="page-header">
                     <h2>📜 Recent Transactions</h2>
-                    <span class="ds-info">Stack</span>
+                    <span class="ds-info">C Style: Stack</span>
                 </div>
 
                 <div class="table-container">
@@ -834,11 +995,11 @@
             `;
 
             let temp = transactionTop;
-            if (!temp) {
+            if (temp === NULL) {
                 html += '<tr><td colspan="5" style="text-align: center;">No transactions found</td></tr>';
             } else {
                 let count = 0;
-                while (temp && count < 10) {
+                while (temp !== NULL && count < 10) {
                     const acc = findAccount(temp.accNo);
                     let details = '-';
                     if (temp.type === 'TRANSFER') {
@@ -868,7 +1029,7 @@
             let html = `
                 <div class="page-header">
                     <h2>⏳ Pending Requests</h2>
-                    <span class="ds-info">Queue</span>
+                    <span class="ds-info">C Style: Queue</span>
                 </div>
 
                 <div style="margin-bottom: 20px;">
@@ -890,10 +1051,10 @@
             `;
 
             let temp = requestFront;
-            if (!temp) {
+            if (temp === NULL) {
                 html += '<tr><td colspan="5" style="text-align: center;">No pending requests</td></tr>';
             } else {
-                while (temp) {
+                while (temp !== NULL) {
                     const acc = findAccount(temp.accNo);
                     let details = '-';
                     if (temp.type === 'TRANSFER') {
@@ -922,7 +1083,7 @@
             const html = `
                 <div class="page-header">
                     <h2>📝 Add New Request</h2>
-                    <span class="ds-info">Queue</span>
+                    <span class="ds-info">C Style: Queue</span>
                 </div>
 
                 <div class="form-group">
@@ -950,7 +1111,7 @@
             document.getElementById('mainContent').innerHTML = html;
         }
 
-        // ========== ACCOUNT FUNCTIONS ==========
+        // ========== ACCOUNT FUNCTIONS (C Style) ==========
 
         function createAccount() {
             const accNo = parseInt(document.getElementById('accNo').value);
@@ -961,9 +1122,9 @@
                 return;
             }
 
-            // Check if account already exists
+            // Check if account already exists (traverse linked list)
             let temp = accountHead;
-            while (temp) {
+            while (temp !== NULL) {
                 if (temp.accNo === accNo) {
                     showAlert('Account number already exists!', 'error');
                     return;
@@ -971,14 +1132,15 @@
                 temp = temp.next;
             }
 
-            // Create new account
+            // Create new account node
             const newAccount = new Account(accNo, accName);
             
-            if (!accountHead) {
+            // Insert at the end (C style)
+            if (accountHead === NULL) {
                 accountHead = newAccount;
             } else {
                 temp = accountHead;
-                while (temp.next) {
+                while (temp.next !== NULL) {
                     temp = temp.next;
                 }
                 temp.next = newAccount;
@@ -987,15 +1149,18 @@
             showAlert(`Account ${accNo} (${accName}) created successfully!`);
             document.getElementById('accNo').value = '';
             document.getElementById('accName').value = '';
+            
+            // Auto-save to database
+            saveToDatabase();
         }
 
         function findAccount(accNo) {
             let temp = accountHead;
-            while (temp) {
+            while (temp !== NULL) {
                 if (temp.accNo === accNo) return temp;
                 temp = temp.next;
             }
-            return null;
+            return NULL;
         }
 
         function searchAccount() {
@@ -1010,7 +1175,7 @@
             // Search by account number or name
             let results = [];
             let temp = accountHead;
-            while (temp) {
+            while (temp !== NULL) {
                 if (temp.accNo.toString().includes(searchTerm) || 
                     temp.name.toLowerCase().includes(searchTerm)) {
                     results.push(temp);
@@ -1028,7 +1193,7 @@
                 // Find recent transactions for this account
                 let transactions = [];
                 let transTemp = transactionTop;
-                while (transTemp && transactions.length < 3) {
+                while (transTemp !== NULL && transactions.length < 3) {
                     if (transTemp.accNo === acc.accNo || (transTemp.type === 'TRANSFER' && transTemp.toAccNo === acc.accNo)) {
                         transactions.push(transTemp);
                     }
@@ -1085,7 +1250,7 @@
 
         function showDeleteConfirmation(accNo) {
             const acc = findAccount(accNo);
-            if (!acc) return;
+            if (acc === NULL) return;
 
             accountToDelete = accNo;
             const modal = document.getElementById('deleteModal');
@@ -1102,22 +1267,22 @@
 
         function closeDeleteModal() {
             document.getElementById('deleteModal').classList.remove('active');
-            accountToDelete = null;
+            accountToDelete = NULL;
         }
 
         function confirmDelete() {
-            if (!accountToDelete) return;
+            if (accountToDelete === NULL) return;
 
             let temp = accountHead;
-            let prev = null;
+            let prev = NULL;
 
-            while (temp && temp.accNo !== accountToDelete) {
+            while (temp !== NULL && temp.accNo !== accountToDelete) {
                 prev = temp;
                 temp = temp.next;
             }
 
-            if (temp) {
-                if (!prev) {
+            if (temp !== NULL) {
+                if (prev === NULL) {
                     accountHead = temp.next;
                 } else {
                     prev.next = temp.next;
@@ -1127,18 +1292,20 @@
 
             closeDeleteModal();
             searchAccount(); // Refresh search results
+            saveToDatabase(); // Auto-save after delete
         }
 
-        // ========== TRANSACTION FUNCTIONS ==========
+        // ========== TRANSACTION FUNCTIONS (Stack - C Style) ==========
 
-        function pushTransaction(accNo, type, amount, toAccNo = null) {
+        function pushTransaction(accNo, type, amount, toAccNo) {
             const newTrans = new Transaction(nextTransactionId++, accNo, type, amount, toAccNo);
+            // Push to top of stack
             newTrans.next = transactionTop;
             transactionTop = newTrans;
         }
 
-        function undoLastTransaction() {
-            if (!transactionTop) {
+        function undoLastTransaction(element) {
+            if (transactionTop === NULL) {
                 showAlert('No transactions to undo!', 'error');
                 return;
             }
@@ -1146,7 +1313,7 @@
             const lastTrans = transactionTop;
             const acc = findAccount(lastTrans.accNo);
 
-            if (acc) {
+            if (acc !== NULL) {
                 if (lastTrans.type === 'DEPOSIT') {
                     acc.balance -= lastTrans.amount;
                     showAlert(`Undo Deposit: $${lastTrans.amount} reversed`);
@@ -1156,7 +1323,7 @@
                 } else if (lastTrans.type === 'TRANSFER') {
                     const fromAcc = findAccount(lastTrans.accNo);
                     const toAcc = findAccount(lastTrans.toAccNo);
-                    if (fromAcc && toAcc) {
+                    if (fromAcc !== NULL && toAcc !== NULL) {
                         fromAcc.balance += lastTrans.amount;
                         toAcc.balance -= lastTrans.amount;
                         showAlert(`Undo Transfer: $${lastTrans.amount} reversed`);
@@ -1164,16 +1331,27 @@
                 }
             }
 
+            // Pop from stack
             transactionTop = lastTrans.next;
+            
+            // Update active state
+            if (element) {
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                element.classList.add('active');
+            }
+            
             loadDashboard();
+            saveToDatabase(); // Auto-save after undo
         }
 
-        // ========== QUEUE FUNCTIONS ==========
+        // ========== QUEUE FUNCTIONS (Queue - C Style) ==========
 
-        function enqueueRequest(accNo, type, amount, toAccNo = null) {
+        function enqueueRequest(accNo, type, amount, toAccNo) {
             const newRequest = new Request(nextRequestId++, accNo, type, amount, toAccNo);
 
-            if (!requestRear) {
+            if (requestRear === NULL) {
                 requestFront = requestRear = newRequest;
             } else {
                 requestRear.next = newRequest;
@@ -1184,7 +1362,7 @@
         }
 
         function processNextRequest() {
-            if (!requestFront) {
+            if (requestFront === NULL) {
                 showAlert('No pending requests!', 'error');
                 return;
             }
@@ -1192,18 +1370,18 @@
             const current = requestFront;
             const acc = findAccount(current.accNo);
 
-            if (!acc) {
+            if (acc === NULL) {
                 showAlert(`Account ${current.accNo} not found!`, 'error');
             } else {
                 if (current.type === 'DEPOSIT') {
                     acc.balance += current.amount;
-                    pushTransaction(current.accNo, 'DEPOSIT', current.amount);
+                    pushTransaction(current.accNo, 'DEPOSIT', current.amount, NULL);
                     showAlert(`Deposit Request #${current.id} processed`);
                 } 
                 else if (current.type === 'WITHDRAW') {
                     if (acc.balance >= current.amount) {
                         acc.balance -= current.amount;
-                        pushTransaction(current.accNo, 'WITHDRAW', current.amount);
+                        pushTransaction(current.accNo, 'WITHDRAW', current.amount, NULL);
                         showAlert(`Withdrawal Request #${current.id} processed`);
                     } else {
                         showAlert(`Insufficient balance! (Current: $${acc.balance})`, 'error');
@@ -1211,7 +1389,7 @@
                 }
                 else if (current.type === 'TRANSFER') {
                     const toAcc = findAccount(current.toAccNo);
-                    if (!toAcc) {
+                    if (toAcc === NULL) {
                         showAlert(`Receiver account ${current.toAccNo} not found!`, 'error');
                     } else if (acc.balance >= current.amount) {
                         acc.balance -= current.amount;
@@ -1224,11 +1402,14 @@
                 }
             }
 
-            // Dequeue
+            // Dequeue (remove from front)
             requestFront = current.next;
-            if (!requestFront) requestRear = null;
+            if (requestFront === NULL) {
+                requestRear = NULL;
+            }
 
             loadRequests();
+            saveToDatabase(); // Auto-save after processing
         }
 
         // ========== BANK OPERATIONS ==========
@@ -1248,17 +1429,19 @@
             }
 
             const acc = findAccount(accNo);
-            if (!acc) {
+            if (acc === NULL) {
                 showAlert(`Account ${accNo} not found!`, 'error');
                 return;
             }
 
             acc.balance += amount;
-            pushTransaction(acc.accNo, 'DEPOSIT', amount);
+            pushTransaction(acc.accNo, 'DEPOSIT', amount, NULL);
             showAlert(`$${amount} deposited successfully!`);
             
             document.getElementById('depositAccount').value = '';
             document.getElementById('depositAmount').value = '';
+            
+            saveToDatabase(); // Auto-save after deposit
         }
 
         function withdrawMoney() {
@@ -1276,18 +1459,20 @@
             }
 
             const acc = findAccount(accNo);
-            if (!acc) {
+            if (acc === NULL) {
                 showAlert(`Account ${accNo} not found!`, 'error');
                 return;
             }
 
             if (acc.balance >= amount) {
                 acc.balance -= amount;
-                pushTransaction(acc.accNo, 'WITHDRAW', amount);
+                pushTransaction(acc.accNo, 'WITHDRAW', amount, NULL);
                 showAlert(`$${amount} withdrawn successfully!`);
                 
                 document.getElementById('withdrawAccount').value = '';
                 document.getElementById('withdrawAmount').value = '';
+                
+                saveToDatabase(); // Auto-save after withdrawal
             } else {
                 showAlert(`Insufficient balance! (Current: $${acc.balance})`, 'error');
             }
@@ -1316,12 +1501,12 @@
             const fromAcc = findAccount(fromAccNo);
             const toAcc = findAccount(toAccNo);
 
-            if (!fromAcc) {
+            if (fromAcc === NULL) {
                 showAlert(`Sender account ${fromAccNo} not found!`, 'error');
                 return;
             }
 
-            if (!toAcc) {
+            if (toAcc === NULL) {
                 showAlert(`Receiver account ${toAccNo} not found!`, 'error');
                 return;
             }
@@ -1335,6 +1520,8 @@
                 document.getElementById('fromAccount').value = '';
                 document.getElementById('toAccount').value = '';
                 document.getElementById('transferAmount').value = '';
+                
+                saveToDatabase(); // Auto-save after transfer
             } else {
                 showAlert(`Insufficient balance in sender account! (Current: $${fromAcc.balance})`, 'error');
             }
@@ -1369,6 +1556,8 @@
             if (document.getElementById('receiverAccount')) {
                 document.getElementById('receiverAccount').value = '';
             }
+            
+            saveToDatabase(); // Auto-save after adding request
         }
 
         function toggleReceiverField() {
@@ -1384,8 +1573,9 @@
             document.getElementById('accName').value = '';
         }
 
-        // Load dashboard by default
+        // Load from database on startup
         window.onload = function() {
+            loadFromDatabase();
             loadDashboard();
         };
     </script>
