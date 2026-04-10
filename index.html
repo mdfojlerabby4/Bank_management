@@ -264,6 +264,16 @@
             color: white;
         }
 
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,193,7,0.4);
+        }
+
         .table-container {
             overflow-x: auto;
         }
@@ -289,6 +299,17 @@
             background: #f8f9fa;
         }
 
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-buttons button {
+            padding: 5px 12px;
+            font-size: 0.8rem;
+        }
+
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -296,7 +317,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -306,9 +327,36 @@
             background: white;
             border-radius: 20px;
             padding: 30px;
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
             text-align: center;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-content .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .modal-content .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .modal-content .info-value {
+            color: #333;
         }
 
         .modal-buttons {
@@ -317,6 +365,15 @@
             justify-content: center;
             margin-top: 25px;
         }
+
+        .modal-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .modal-icon.success { color: #28a745; }
+        .modal-icon.error { color: #dc3545; }
+        .modal-icon.info { color: #667eea; }
 
         .alert {
             position: fixed;
@@ -357,6 +414,9 @@
                 flex-direction: column;
                 text-align: center;
                 gap: 10px;
+            }
+            .action-buttons {
+                flex-direction: column;
             }
         }
     </style>
@@ -582,8 +642,7 @@
                     <label>Account Number</label>
                     <input type="number" id="balanceAccNo">
                 </div>
-                <button class="btn btn-primary" onclick="checkBalance()">Check Balance</button>
-                <div id="balanceResult" style="margin-top: 20px;"></div>
+                <button class="btn btn-primary" onclick="checkBalanceModal()">Check Balance</button>
             </div>
         </div>
 
@@ -677,8 +736,7 @@
             <div class="form-card">
                 <h2><i class="fas fa-chart-line"></i> Check Loan Status</h2>
                 <div class="form-group"><label>Account Number</label><input type="number" id="statusAccNo"></div>
-                <button class="btn btn-primary" onclick="checkLoanStatus()">Check Status</button>
-                <div id="loanStatusResult" style="margin-top: 20px;"></div>
+                <button class="btn btn-primary" onclick="checkLoanStatusModal()">Check Status</button>
             </div>
         </div>
 
@@ -694,7 +752,14 @@
         <div id="priority-queue" class="page-content">
             <div class="form-card">
                 <h2><i class="fas fa-star"></i> Priority Queue (VIP/Medium)</h2>
-                <div class="table-container"><table id="priorityQueueTable"><thead><tr><th>ID</th><th>Account</th><th>Type</th><th>Amount</th><th>Priority</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+                <div class="table-container">
+                    <table id="priorityQueueTable">
+                        <thead>
+                            <tr><th>ID</th><th>Account</th><th>Type</th><th>Amount</th><th>Priority</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -702,14 +767,34 @@
         <div id="regular-queue" class="page-content">
             <div class="form-card">
                 <h2><i class="fas fa-clock"></i> Regular Queue (Normal)</h2>
-                <div class="table-container"><table id="regularQueueTable"><thead><tr><th>ID</th><th>Account</th><th>Type</th><th>Amount</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+                <div class="table-container">
+                    <table id="regularQueueTable">
+                        <thead>
+                            <tr><th>ID</th><th>Account</th><th>Type</th><th>Amount</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Info Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <div id="modalIcon" class="modal-icon"></div>
+            <h3 id="modalTitle"></h3>
+            <div id="modalBody"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="modal">
         <div class="modal-content">
-            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f5576c; margin-bottom: 15px;"></i>
+            <div class="modal-icon error"><i class="fas fa-exclamation-triangle"></i></div>
             <h3>Confirm Delete</h3>
             <p>Are you sure you want to delete this account?</p>
             <p style="color: #f5576c; font-weight: bold;">This action cannot be undone!</p>
@@ -763,6 +848,30 @@
             document.getElementById('pendingRequests').innerText = priorityQueue.length + regularQueue.length;
             let totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
             document.getElementById('totalBalance').innerText = '$' + totalBalance.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+
+        function showModal(title, body, type = 'info') {
+            let modalIcon = document.getElementById('modalIcon');
+            let modalTitle = document.getElementById('modalTitle');
+            let modalBody = document.getElementById('modalBody');
+            
+            if (type === 'success') {
+                modalIcon.innerHTML = '<i class="fas fa-check-circle" style="font-size: 3rem; color: #28a745;"></i>';
+            } else if (type === 'error') {
+                modalIcon.innerHTML = '<i class="fas fa-times-circle" style="font-size: 3rem; color: #dc3545;"></i>';
+            } else {
+                modalIcon.innerHTML = '<i class="fas fa-info-circle" style="font-size: 3rem; color: #667eea;"></i>';
+            }
+            
+            modalTitle.innerText = title;
+            modalBody.innerHTML = body;
+            document.getElementById('infoModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('infoModal').style.display = 'none';
+            document.getElementById('deleteModal').style.display = 'none';
+            deleteTarget = null;
         }
 
         function showAlert(message, type) {
@@ -841,7 +950,7 @@
         function confirmAccountDelete(accNo) {
             let account = accounts.find(a => a.accNo === accNo);
             if (account && account.balance > 0) {
-                showAlert(`Account has balance of $${account.balance}. Please withdraw first!`, 'error');
+                showModal('Cannot Delete', `Account has balance of $${account.balance}. Please withdraw first!`, 'error');
             } else {
                 deleteTarget = accNo;
                 document.getElementById('deleteModal').style.display = 'flex';
@@ -854,12 +963,10 @@
                 saveData();
                 loadAccountsTable();
                 loadDeleteAccountsTable();
-                showAlert('Account deleted successfully!', 'success');
+                showModal('Success', 'Account deleted successfully!', 'success');
             }
             closeModal();
         }
-
-        function closeModal() { document.getElementById('deleteModal').style.display = 'none'; deleteTarget = null; }
 
         function loadTransactionsTable() {
             let tbody = document.querySelector('#transactionsTable tbody');
@@ -893,12 +1000,21 @@
             if (transactions.length === 0) div.innerHTML = '<p>No transactions to undo.</p>';
             else {
                 let last = transactions[transactions.length - 1];
-                div.innerHTML = `<div class="table-container"><table><tr><th>ID</th><td>${last.id}</td></tr><tr><th>Account</th><td>${last.accNo}</tr><tr><th>Type</th><td>${last.type}</tr><tr><th>Amount</th><td>$${last.amount.toFixed(2)}</tr><tr><th>Date</th><td>${new Date(last.date).toLocaleString()}</tr></table></div>`;
+                div.innerHTML = `<div class="table-container"><table>
+                    <tr><th>ID</th><td>${last.id}</td></tr>
+                    <tr><th>Account</th><td>${last.accNo}</td></tr>
+                    <tr><th>Type</th><td>${last.type}</td></tr>
+                    <tr><th>Amount</th><td>$${last.amount.toFixed(2)}</td></tr>
+                    <tr><th>Date</th><td>${new Date(last.date).toLocaleString()}</td></tr>
+                </table></div>`;
             }
         }
 
         function undoLastTransaction() {
-            if (transactions.length === 0) { showAlert('No transactions to undo!', 'error'); return; }
+            if (transactions.length === 0) { 
+                showModal('Cannot Undo', 'No transactions to undo!', 'error');
+                return; 
+            }
             let last = transactions.pop();
             let account = accounts.find(a => a.accNo === last.accNo);
             if (account) {
@@ -913,7 +1029,7 @@
             saveData();
             loadLastTransaction();
             loadTransactionsTable();
-            showAlert('Transaction undone!', 'success');
+            showModal('Success', 'Transaction undone successfully!', 'success');
         }
 
         function loadPriorityQueue() {
@@ -926,12 +1042,39 @@
                 row.insertCell(2).innerText = req.type;
                 row.insertCell(3).innerText = '$' + req.amount.toFixed(2);
                 row.insertCell(4).innerHTML = req.priority === 1 ? '<span style="color:#f5576c;">HIGH-VIP</span>' : '<span style="color:#4facfe;">MEDIUM</span>';
-                let btn = document.createElement('button');
-                btn.innerText = 'Approve';
-                btn.className = 'btn btn-primary';
-                btn.style.padding = '5px 15px';
-                btn.onclick = () => { processTransaction(req); priorityQueue = priorityQueue.filter(r => r.id !== req.id); saveData(); loadPriorityQueue(); showAlert('Request approved!', 'success'); };
-                row.insertCell(5).appendChild(btn);
+                
+                let actions = document.createElement('div');
+                actions.className = 'action-buttons';
+                
+                let approveBtn = document.createElement('button');
+                approveBtn.innerText = 'Approve';
+                approveBtn.className = 'btn btn-primary';
+                approveBtn.style.padding = '5px 12px';
+                approveBtn.style.fontSize = '0.8rem';
+                approveBtn.onclick = () => { 
+                    processTransaction(req); 
+                    priorityQueue = priorityQueue.filter(r => r.id !== req.id); 
+                    saveData(); 
+                    loadPriorityQueue(); 
+                    showModal('Success', 'Request approved successfully!', 'success');
+                };
+                
+                let removeBtn = document.createElement('button');
+                removeBtn.innerText = 'Remove';
+                removeBtn.className = 'btn btn-warning';
+                removeBtn.style.padding = '5px 12px';
+                removeBtn.style.fontSize = '0.8rem';
+                removeBtn.onclick = () => { 
+                    priorityQueue = priorityQueue.filter(r => r.id !== req.id); 
+                    saveData(); 
+                    loadPriorityQueue(); 
+                    updateDashboard();
+                    showModal('Removed', 'Request removed from queue!', 'info');
+                };
+                
+                actions.appendChild(approveBtn);
+                actions.appendChild(removeBtn);
+                row.insertCell(5).appendChild(actions);
             });
         }
 
@@ -944,49 +1087,97 @@
                 row.insertCell(1).innerText = req.accNo;
                 row.insertCell(2).innerText = req.type;
                 row.insertCell(3).innerText = '$' + req.amount.toFixed(2);
-                let btn = document.createElement('button');
-                btn.innerText = 'Approve';
-                btn.className = 'btn btn-primary';
-                btn.style.padding = '5px 15px';
-                btn.onclick = () => { processTransaction(req); regularQueue = regularQueue.filter(r => r.id !== req.id); saveData(); loadRegularQueue(); showAlert('Request approved!', 'success'); };
-                row.insertCell(4).appendChild(btn);
+                
+                let actions = document.createElement('div');
+                actions.className = 'action-buttons';
+                
+                let approveBtn = document.createElement('button');
+                approveBtn.innerText = 'Approve';
+                approveBtn.className = 'btn btn-primary';
+                approveBtn.style.padding = '5px 12px';
+                approveBtn.style.fontSize = '0.8rem';
+                approveBtn.onclick = () => { 
+                    processTransaction(req); 
+                    regularQueue = regularQueue.filter(r => r.id !== req.id); 
+                    saveData(); 
+                    loadRegularQueue(); 
+                    showModal('Success', 'Request approved successfully!', 'success');
+                };
+                
+                let removeBtn = document.createElement('button');
+                removeBtn.innerText = 'Remove';
+                removeBtn.className = 'btn btn-warning';
+                removeBtn.style.padding = '5px 12px';
+                removeBtn.style.fontSize = '0.8rem';
+                removeBtn.onclick = () => { 
+                    regularQueue = regularQueue.filter(r => r.id !== req.id); 
+                    saveData(); 
+                    loadRegularQueue(); 
+                    updateDashboard();
+                    showModal('Removed', 'Request removed from queue!', 'info');
+                };
+                
+                actions.appendChild(approveBtn);
+                actions.appendChild(removeBtn);
+                row.insertCell(4).appendChild(actions);
             });
         }
 
         function processTransaction(req) {
             let account = accounts.find(a => a.accNo === req.accNo);
-            if (!account) { showAlert('Account not found!', 'error'); return; }
-            if (req.type === 'DEPOSIT') { account.balance += req.amount; addTransaction(req.accNo, 'DEPOSIT', req.amount); showAlert(`Deposited $${req.amount}`, 'success'); }
+            if (!account) { 
+                showModal('Error', 'Account not found!', 'error');
+                return; 
+            }
+            if (req.type === 'DEPOSIT') { 
+                account.balance += req.amount; 
+                addTransaction(req.accNo, 'DEPOSIT', req.amount); 
+            }
             else if (req.type === 'WITHDRAW') {
-                if (account.balance >= req.amount) { account.balance -= req.amount; addTransaction(req.accNo, 'WITHDRAW', req.amount); showAlert(`Withdrew $${req.amount}`, 'success'); }
-                else showAlert('Insufficient balance!', 'error');
+                if (account.balance >= req.amount) { 
+                    account.balance -= req.amount; 
+                    addTransaction(req.accNo, 'WITHDRAW', req.amount); 
+                } else {
+                    showModal('Error', 'Insufficient balance!', 'error');
+                }
             }
             else if (req.type === 'TRANSFER') {
                 let toAccount = accounts.find(a => a.accNo === req.toAccNo);
                 if (toAccount && account.balance >= req.amount) {
-                    account.balance -= req.amount; toAccount.balance += req.amount;
+                    account.balance -= req.amount; 
+                    toAccount.balance += req.amount;
                     addTransaction(req.accNo, 'TRANSFER_OUT', req.amount, req.toAccNo);
                     addTransaction(req.toAccNo, 'TRANSFER_IN', req.amount, req.accNo);
-                    showAlert(`Transferred $${req.amount}`, 'success');
-                } else showAlert('Transfer failed!', 'error');
+                } else {
+                    showModal('Error', 'Transfer failed! Check balance or receiver account.', 'error');
+                }
             }
             else if (req.type === 'LOAN_APPLICATION') {
                 if (account.balance >= req.amount * 0.1) {
                     let totalPayable = req.amount * (1 + req.interestRate / 100);
-                    account.loanAmount = req.amount; account.loanRemaining = totalPayable; account.loanInterestRate = req.interestRate; account.hasActiveLoan = 1;
+                    account.loanAmount = req.amount; 
+                    account.loanRemaining = totalPayable; 
+                    account.loanInterestRate = req.interestRate; 
+                    account.hasActiveLoan = 1;
                     account.balance += req.amount;
                     loans.push({ id: nextLoanId++, accNo: req.accNo, principal: req.amount, remaining: totalPayable, rate: req.interestRate, term: req.termMonths, status: 'ACTIVE' });
                     addTransaction(req.accNo, 'LOAN_DISBURSEMENT', req.amount);
-                    showAlert(`Loan of $${req.amount} approved!`, 'success');
-                } else showAlert(`Loan rejected! Need $${req.amount * 0.1} minimum balance`, 'error');
+                } else {
+                    showModal('Error', `Loan rejected! Need minimum balance of $${req.amount * 0.1}`, 'error');
+                }
             }
             else if (req.type === 'LOAN_PAYMENT') {
                 if (account.hasActiveLoan && account.balance >= req.amount) {
-                    account.balance -= req.amount; account.loanRemaining -= req.amount;
+                    account.balance -= req.amount; 
+                    account.loanRemaining -= req.amount;
                     addTransaction(req.accNo, 'LOAN_PAYMENT', req.amount);
-                    if (account.loanRemaining <= 0) { account.hasActiveLoan = 0; showAlert('Loan fully paid! Congratulations!', 'success'); }
-                    else showAlert(`Payment of $${req.amount} received. Remaining: $${account.loanRemaining.toFixed(2)}`, 'success');
-                } else showAlert('Insufficient balance or no active loan!', 'error');
+                    if (account.loanRemaining <= 0) { 
+                        account.hasActiveLoan = 0; 
+                        showModal('Congratulations', 'Loan fully paid off!', 'success');
+                    }
+                } else {
+                    showModal('Error', 'Insufficient balance or no active loan!', 'error');
+                }
             }
             saveData();
         }
@@ -999,27 +1190,54 @@
             let term = document.getElementById('searchTerm').value.toLowerCase();
             let result = accounts.filter(a => a.accNo.toString().includes(term) || a.name.toLowerCase().includes(term));
             let resultDiv = document.getElementById('searchResult');
-            if (result.length > 0) resultDiv.innerHTML = `<div class="table-container"><table><thead><tr><th>Acc No</th><th>Name</th><th>Balance</th><th>Loan Due</th></tr></thead><tbody>${result.map(a => `<tr><td>${a.accNo}</td><td>${a.name}</td><td>$${a.balance.toFixed(2)}</td><td>$${(a.loanRemaining || 0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`;
-            else resultDiv.innerHTML = '<p style="color:red;">No accounts found!</p>';
+            if (result.length > 0) {
+                let html = '<div class="table-container"><table><thead><tr><th>Acc No</th><th>Name</th><th>Balance</th><th>Loan Due</th></tr></thead><tbody>';
+                result.forEach(a => {
+                    html += `<tr><td>${a.accNo}</td><td>${a.name}</td><td>$${a.balance.toFixed(2)}</td><td>$${(a.loanRemaining || 0).toFixed(2)}</td></tr>`;
+                });
+                html += '</tbody></table></div>';
+                resultDiv.innerHTML = html;
+            } else {
+                resultDiv.innerHTML = '<p style="color:red;">No accounts found!</p>';
+            }
         }
 
-        function checkBalance() {
+        function checkBalanceModal() {
             let accNo = parseInt(document.getElementById('balanceAccNo').value);
             let account = accounts.find(a => a.accNo === accNo);
-            let resultDiv = document.getElementById('balanceResult');
-            if (account) resultDiv.innerHTML = `<div class="table-container"><tr><th>Account Number</th><td>${account.accNo}</tr><tr><th>Holder Name</th><td>${account.name}</tr><tr><th>Current Balance</th><td>$${account.balance.toFixed(2)}</tr>${account.hasActiveLoan ? `<tr><th>Loan Remaining</th><td>$${account.loanRemaining.toFixed(2)}</td></tr>` : ''}月起</div>`;
-            else resultDiv.innerHTML = '<p style="color:red;">Account not found!</p>';
+            if (account) {
+                let loanHtml = account.hasActiveLoan ? `<div class="info-row"><span class="info-label">Loan Remaining:</span><span class="info-value">$${account.loanRemaining.toFixed(2)}</span></div>` : '';
+                let body = `
+                    <div class="info-row"><span class="info-label">Account Number:</span><span class="info-value">${account.accNo}</span></div>
+                    <div class="info-row"><span class="info-label">Holder Name:</span><span class="info-value">${account.name}</span></div>
+                    <div class="info-row"><span class="info-label">Current Balance:</span><span class="info-value">$${account.balance.toFixed(2)}</span></div>
+                    ${loanHtml}
+                `;
+                showModal('Account Balance', body, 'info');
+            } else {
+                showModal('Error', 'Account not found!', 'error');
+            }
         }
 
-        function checkLoanStatus() {
+        function checkLoanStatusModal() {
             let accNo = parseInt(document.getElementById('statusAccNo').value);
             let account = accounts.find(a => a.accNo === accNo);
-            let resultDiv = document.getElementById('loanStatusResult');
             if (account && account.hasActiveLoan) {
                 let paid = account.loanAmount - account.loanRemaining;
                 let progress = (paid / account.loanAmount * 100).toFixed(1);
-                resultDiv.innerHTML = `<div class="table-container"><table><th>Principal Amount</th><td>$${account.loanAmount.toFixed(2)}</td></tr><tr><th>Interest Rate</th><td>${account.loanInterestRate}%</td></tr><tr><th>Total Payable</th><td>$${account.loanRemaining.toFixed(2)}</td></tr><tr><th>Paid Amount</th><td>$${paid.toFixed(2)}</td></tr><tr><th>Progress</th><td>${progress}%</td></tr></table></div>`;
-            } else resultDiv.innerHTML = '<p>No active loan found!</p>';
+                let body = `
+                    <div class="info-row"><span class="info-label">Principal Amount:</span><span class="info-value">$${account.loanAmount.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="info-label">Interest Rate:</span><span class="info-value">${account.loanInterestRate}%</span></div>
+                    <div class="info-row"><span class="info-label">Total Payable:</span><span class="info-value">$${account.loanRemaining.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="info-label">Paid Amount:</span><span class="info-value">$${paid.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="info-label">Progress:</span><span class="info-value">${progress}%</span></div>
+                `;
+                showModal('Loan Status', body, 'info');
+            } else if (account && !account.hasActiveLoan) {
+                showModal('Loan Status', 'No active loan for this account.', 'info');
+            } else {
+                showModal('Error', 'Account not found!', 'error');
+            }
         }
 
         // Form Handlers
@@ -1028,11 +1246,14 @@
             let accNo = parseInt(document.getElementById('accNo').value);
             let name = document.getElementById('accName').value;
             let deposit = parseFloat(document.getElementById('initialDeposit').value);
-            if (accounts.find(a => a.accNo === accNo)) { showAlert('Account number already exists!', 'error'); return; }
+            if (accounts.find(a => a.accNo === accNo)) { 
+                showModal('Error', 'Account number already exists!', 'error');
+                return; 
+            }
             accounts.push({ accNo, name, balance: deposit, loanAmount: 0, loanRemaining: 0, loanInterestRate: 0, hasActiveLoan: 0 });
             if (deposit > 0) addTransaction(accNo, 'DEPOSIT', deposit);
             saveData();
-            showAlert('Account created successfully!', 'success');
+            showModal('Success', 'Account created successfully!', 'success');
             e.target.reset();
             navigateTo('all-accounts');
         });
@@ -1042,14 +1263,17 @@
             let accNo = parseInt(document.getElementById('depositAccNo').value);
             let amount = parseFloat(document.getElementById('depositAmount').value);
             let priority = parseInt(document.getElementById('depositPriority').value);
-            if (!accounts.find(a => a.accNo === accNo)) { showAlert('Account not found!', 'error'); return; }
+            if (!accounts.find(a => a.accNo === accNo)) { 
+                showModal('Error', 'Account not found!', 'error');
+                return; 
+            }
             let request = { id: nextId++, accNo, type: 'DEPOSIT', amount, priority };
             if (priority === 3) regularQueue.push(request);
             else priorityQueue.push(request);
             saveData();
-            showAlert('Request added to queue!', 'success');
+            showModal('Success', 'Request added to queue! You can approve it from Queue section.', 'success');
             e.target.reset();
-            navigateTo('priority-queue');
+            // Stay on same page, don't navigate
         });
 
         document.getElementById('withdrawForm')?.addEventListener('submit', (e) => {
@@ -1058,15 +1282,20 @@
             let amount = parseFloat(document.getElementById('withdrawAmount').value);
             let priority = parseInt(document.getElementById('withdrawPriority').value);
             let account = accounts.find(a => a.accNo === accNo);
-            if (!account) { showAlert('Account not found!', 'error'); return; }
-            if (account.balance < amount) { showAlert('Insufficient balance!', 'error'); return; }
+            if (!account) { 
+                showModal('Error', 'Account not found!', 'error');
+                return; 
+            }
+            if (account.balance < amount) { 
+                showModal('Error', 'Insufficient balance!', 'error');
+                return; 
+            }
             let request = { id: nextId++, accNo, type: 'WITHDRAW', amount, priority };
             if (priority === 3) regularQueue.push(request);
             else priorityQueue.push(request);
             saveData();
-            showAlert('Request added to queue!', 'success');
+            showModal('Success', 'Request added to queue! You can approve it from Queue section.', 'success');
             e.target.reset();
-            navigateTo('priority-queue');
         });
 
         document.getElementById('transferForm')?.addEventListener('submit', (e) => {
@@ -1077,15 +1306,20 @@
             let priority = parseInt(document.getElementById('transferPriority').value);
             let fromAccount = accounts.find(a => a.accNo === fromAcc);
             let toAccount = accounts.find(a => a.accNo === toAcc);
-            if (!fromAccount || !toAccount) { showAlert('Account not found!', 'error'); return; }
-            if (fromAccount.balance < amount) { showAlert('Insufficient balance!', 'error'); return; }
+            if (!fromAccount || !toAccount) { 
+                showModal('Error', 'Account not found!', 'error');
+                return; 
+            }
+            if (fromAccount.balance < amount) { 
+                showModal('Error', 'Insufficient balance!', 'error');
+                return; 
+            }
             let request = { id: nextId++, accNo: fromAcc, type: 'TRANSFER', amount, toAccNo: toAcc, priority };
             if (priority === 3) regularQueue.push(request);
             else priorityQueue.push(request);
             saveData();
-            showAlert('Request added to queue!', 'success');
+            showModal('Success', 'Request added to queue! You can approve it from Queue section.', 'success');
             e.target.reset();
-            navigateTo('priority-queue');
         });
 
         document.getElementById('loanForm')?.addEventListener('submit', (e) => {
@@ -1096,15 +1330,20 @@
             let rate = parseFloat(document.getElementById('loanRate').value);
             let priority = parseInt(document.getElementById('loanPriority').value);
             let account = accounts.find(a => a.accNo === accNo);
-            if (!account) { showAlert('Account not found!', 'error'); return; }
-            if (account.hasActiveLoan) { showAlert('Already have an active loan!', 'error'); return; }
+            if (!account) { 
+                showModal('Error', 'Account not found!', 'error');
+                return; 
+            }
+            if (account.hasActiveLoan) { 
+                showModal('Error', 'Already have an active loan!', 'error');
+                return; 
+            }
             let request = { id: nextId++, accNo, type: 'LOAN_APPLICATION', amount, termMonths: term, interestRate: rate, priority };
             if (priority === 3) regularQueue.push(request);
             else priorityQueue.push(request);
             saveData();
-            showAlert('Loan application added to queue!', 'success');
+            showModal('Success', 'Loan application added to queue! You can approve it from Queue section.', 'success');
             e.target.reset();
-            navigateTo('priority-queue');
         });
 
         document.getElementById('loanPaymentForm')?.addEventListener('submit', (e) => {
@@ -1113,16 +1352,24 @@
             let amount = parseFloat(document.getElementById('paymentAmount').value);
             let priority = parseInt(document.getElementById('paymentPriority').value);
             let account = accounts.find(a => a.accNo === accNo);
-            if (!account) { showAlert('Account not found!', 'error'); return; }
-            if (!account.hasActiveLoan) { showAlert('No active loan!', 'error'); return; }
-            if (account.balance < amount) { showAlert('Insufficient balance!', 'error'); return; }
+            if (!account) { 
+                showModal('Error', 'Account not found!', 'error');
+                return; 
+            }
+            if (!account.hasActiveLoan) { 
+                showModal('Error', 'No active loan!', 'error');
+                return; 
+            }
+            if (account.balance < amount) { 
+                showModal('Error', 'Insufficient balance!', 'error');
+                return; 
+            }
             let request = { id: nextId++, accNo, type: 'LOAN_PAYMENT', amount, priority };
             if (priority === 3) regularQueue.push(request);
             else priorityQueue.push(request);
             saveData();
-            showAlert('Payment request added to queue!', 'success');
+            showModal('Success', 'Payment request added to queue! You can approve it from Queue section.', 'success');
             e.target.reset();
-            navigateTo('priority-queue');
         });
 
         updateDashboard();
