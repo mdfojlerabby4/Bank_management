@@ -1,1 +1,1380 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <math.h>
 
+struct Account {
+    int accNo;
+    char name[100];
+    float balance;
+    float loanAmount;
+    float loanRemaining;
+    float loanInterestRate;
+    int hasActiveLoan;
+    struct Account *next;
+};
+
+struct Transaction {
+    int transactionId;
+    int accNo;
+    char type[20];
+    float amount;
+    int toAccNo;
+    struct Transaction *next;
+};
+
+struct Loan {
+    int loanId;
+    int accNo;
+    float principalAmount;
+    float remainingAmount;
+    float interestRate;
+    int termMonths;
+    int monthsPaid;
+    float emiAmount;
+    char status[20];
+    struct Loan *next;
+};
+
+struct PriorityNode {
+    int requestId;
+    int accNo;
+    char type[20];
+    float amount;
+    int toAccNo;
+    int priority;
+    float interestRate;
+    int termMonths;
+    struct PriorityNode *next;
+};
+
+struct Request {
+    int requestId;
+    int accNo;
+    char type[20];
+    float amount;
+    int toAccNo;
+    float interestRate;
+    int termMonths;
+    struct Request *next;
+};
+
+struct Account *accountHead = NULL;
+struct Transaction *transactionTop = NULL;
+struct Request *requestFront = NULL;
+struct Request *requestRear = NULL;
+struct PriorityNode *priorityFront = NULL;
+struct Loan *loanHead = NULL;
+
+int nextTransactionId = 1;
+int nextRequestId = 1;
+int nextLoanId = 1;
+
+void clearInputBuffer();
+void toLowercase(char *str);
+void displayHeader(char *title);
+void displaySuccess(char *message);
+void displayError(char *message);
+void showExitMenu();
+struct Account* findAccount(int accNo);
+void searchAccount();
+void createAccount();
+void displayAllAccounts();
+void deleteAccount();
+void checkBalance();
+void pushTransaction(int accNo, char *type, float amount, int toAccNo);
+void displayRecentTransactions();
+void undoLastTransaction();
+void depositMoney();
+void withdrawMoney();
+void transferMoney();
+void addToQueue(int accNo, char *type, float amount, int toAccNo, int priority, float rate, int term);
+void managePriorityQueue();
+void manageRegularQueue();
+float calculateEMI(float principal, float rate, int months);
+float calculateTotalPayable(float principal, float rate, int months);
+void approveLoan(int accNo, float amount, float interestRate, int term);
+void applyForLoan();
+void makeLoanPayment();
+void checkLoanStatus();
+void displayAllLoans();
+
+void clearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+void toLowercase(char *str) {
+    for(int i = 0; str[i]; i++) {
+        str[i] = tolower(str[i]);
+    }
+}
+
+void displayHeader(char *title) {
+    printf("\n========================================\n");
+    printf("  %s\n", title);
+    printf("========================================\n");
+}
+
+void displaySuccess(char *message) {
+    printf("[SUCCESS] %s\n", message);
+}
+
+void displayError(char *message) {
+    printf("[ERROR] %s\n", message);
+}
+
+void showExitMenu() {
+    int choice;
+    printf("\n----------------------------------------\n");
+    printf("      WHAT WOULD YOU LIKE?\n");
+    printf("----------------------------------------\n");
+    printf("  1. Back to Main Menu\n");
+    printf("  2. Exit\n");
+    printf("----------------------------------------\n");
+    printf("Enter your choice: ");
+    scanf("%d", &choice);
+    clearInputBuffer();
+
+    if(choice == 2) {
+        printf("\n========================================\n");
+        printf("  Thank you for using our banking system!\n");
+        printf("              Goodbye!\n");
+        printf("========================================\n");
+        exit(0);
+    }
+}
+
+struct Account* findAccount(int accNo) {
+    struct Account *temp = accountHead;
+    while(temp != NULL) {
+        if(temp->accNo == accNo) {
+            return temp;
+        }
+        temp = temp->next;
+    }
+    return NULL;
+}
+
+void searchAccount() {
+    char searchTerm[100];
+    struct Account *temp = accountHead;
+    int found = 0;
+    int isNumber = 1;
+
+    displayHeader("SEARCH ACCOUNT");
+    printf("Enter Account Number OR Name: ");
+    fgets(searchTerm, sizeof(searchTerm), stdin);
+    searchTerm[strcspn(searchTerm, "\n")] = 0;
+
+    for(int i = 0; searchTerm[i]; i++) {
+        if(!isdigit(searchTerm[i])) {
+            isNumber = 0;
+            break;
+        }
+    }
+
+    printf("\n");
+
+    if(isNumber) {
+        int accNo = atoi(searchTerm);
+        struct Account *acc = findAccount(accNo);
+
+        if(acc != NULL) {
+            printf("[FOUND] Account Found:\n");
+            printf("----------------------------------------\n");
+            printf("Account Number : %d\n", acc->accNo);
+            printf("Holder Name    : %s\n", acc->name);
+            printf("Balance        : %.2f\n", acc->balance);
+            printf("Loan Taken     : %.2f\n", acc->loanAmount);
+            printf("Loan Remaining : %.2f\n", acc->loanRemaining);
+            printf("Active Loan    : %s\n", acc->hasActiveLoan ? "YES" : "NO");
+            printf("----------------------------------------\n");
+            found = 1;
+        }
+    } else {
+        char searchLower[100];
+        strcpy(searchLower, searchTerm);
+        toLowercase(searchLower);
+
+        printf("Search Results for '%s':\n", searchTerm);
+        printf("%-15s %-30s %-15s %-15s\n", "Account No", "Holder Name", "Balance", "Loan Due");
+        printf("--------------------------------------------------------------------------------\n");
+
+        while(temp != NULL) {
+            char nameLower[100];
+            strcpy(nameLower, temp->name);
+            toLowercase(nameLower);
+
+            if(strstr(nameLower, searchLower) != NULL) {
+                printf("%-15d %-30s %-15.2f %-15.2f\n",
+                       temp->accNo, temp->name, temp->balance, temp->loanRemaining);
+                found = 1;
+            }
+            temp = temp->next;
+        }
+    }
+
+    if(!found) {
+        displayError("No account found matching your search criteria!");
+    }
+
+    showExitMenu();
+}
+
+void createAccount() {
+    struct Account *newAccount = (struct Account*)malloc(sizeof(struct Account));
+    struct Account *temp = accountHead;
+
+    displayHeader("CREATE NEW ACCOUNT");
+
+    printf("Enter Account Number: ");
+    scanf("%d", &newAccount->accNo);
+    clearInputBuffer();
+
+    temp = accountHead;
+    while(temp != NULL) {
+        if(temp->accNo == newAccount->accNo) {
+            displayError("Account number already exists!");
+            free(newAccount);
+            showExitMenu();
+            return;
+        }
+        temp = temp->next;
+    }
+
+    printf("Enter Account Holder Name: ");
+    fgets(newAccount->name, sizeof(newAccount->name), stdin);
+    newAccount->name[strcspn(newAccount->name, "\n")] = 0;
+
+    newAccount->balance = 0.0;
+    newAccount->loanAmount = 0.0;
+    newAccount->loanRemaining = 0.0;
+    newAccount->loanInterestRate = 0.0;
+    newAccount->hasActiveLoan = 0;
+    newAccount->next = NULL;
+
+    if(accountHead == NULL) {
+        accountHead = newAccount;
+    } else {
+        temp = accountHead;
+        while(temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = newAccount;
+    }
+
+    displaySuccess("Account created successfully!");
+    printf("\nAccount Details:\n");
+    printf("Account Number: %d\n", newAccount->accNo);
+    printf("Holder Name: %s\n", newAccount->name);
+    printf("Initial Balance: %.2f\n", newAccount->balance);
+
+    showExitMenu();
+}
+
+void displayAllAccounts() {
+    struct Account *temp = accountHead;
+
+    displayHeader("ALL ACCOUNTS");
+
+    if(temp == NULL) {
+        displayError("No accounts found in the system!");
+        showExitMenu();
+        return;
+    }
+
+    printf("%-15s %-25s %-15s %-15s\n", "Account No", "Holder Name", "Balance", "Loan Due");
+    printf("--------------------------------------------------------------------------------\n");
+
+    while(temp != NULL) {
+        printf("%-15d %-25s %-15.2f %-15.2f\n",
+               temp->accNo, temp->name, temp->balance, temp->loanRemaining);
+        temp = temp->next;
+    }
+
+    showExitMenu();
+}
+
+void deleteAccount() {
+    int accNo;
+    struct Account *temp = accountHead;
+    struct Account *prev = NULL;
+
+    displayHeader("DELETE ACCOUNT");
+    printf("Enter Account Number to delete: ");
+    scanf("%d", &accNo);
+    clearInputBuffer();
+
+    if(accountHead == NULL) {
+        displayError("No accounts found!");
+        showExitMenu();
+        return;
+    }
+
+    while(temp != NULL && temp->accNo != accNo) {
+        prev = temp;
+        temp = temp->next;
+    }
+
+    if(temp == NULL) {
+        displayError("Account not found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\nAccount to delete:\n");
+    printf("Account: %d | Name: %s | Balance: %.2f\n",
+           temp->accNo, temp->name, temp->balance);
+
+    if(temp->balance > 0 || temp->hasActiveLoan) {
+        printf("\n[WARNING] Account has balance of %.2f and loan remaining: %.2f\n",
+               temp->balance, temp->loanRemaining);
+        printf("Are you sure you want to delete? (1=Yes, 0=No): ");
+        int choice;
+        scanf("%d", &choice);
+        clearInputBuffer();
+        if(choice != 1) {
+            printf("Account deletion cancelled.\n");
+            showExitMenu();
+            return;
+        }
+    }
+
+    if(prev == NULL) {
+        accountHead = temp->next;
+    } else {
+        prev->next = temp->next;
+    }
+
+    displaySuccess("Account deleted successfully!");
+    free(temp);
+    showExitMenu();
+}
+
+void checkBalance() {
+    int accNo;
+    struct Account *acc;
+
+    displayHeader("CHECK BALANCE");
+    printf("Enter Account Number: ");
+    scanf("%d", &accNo);
+    clearInputBuffer();
+
+    acc = findAccount(accNo);
+    if(acc == NULL) {
+        displayError("Account not found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\n========================================\n");
+    printf("        ACCOUNT INFORMATION\n");
+    printf("========================================\n");
+    printf("Account Number : %d\n", acc->accNo);
+    printf("Account Holder : %s\n", acc->name);
+    printf("Current Balance: %.2f\n", acc->balance);
+    if(acc->hasActiveLoan) {
+        printf("Loan Principal : %.2f\n", acc->loanAmount);
+        printf("Loan Remaining : %.2f (Principal + Interest)\n", acc->loanRemaining);
+        printf("Interest Rate  : %.2f%%\n", acc->loanInterestRate);
+    }
+    printf("========================================\n");
+
+    showExitMenu();
+}
+
+void pushTransaction(int accNo, char *type, float amount, int toAccNo) {
+    struct Transaction *newTrans = (struct Transaction*)malloc(sizeof(struct Transaction));
+
+    newTrans->transactionId = nextTransactionId++;
+    newTrans->accNo = accNo;
+    strcpy(newTrans->type, type);
+    newTrans->amount = amount;
+    newTrans->toAccNo = toAccNo;
+    newTrans->next = transactionTop;
+    transactionTop = newTrans;
+}
+
+void displayRecentTransactions() {
+    struct Transaction *temp = transactionTop;
+    int count = 0;
+
+    displayHeader("RECENT TRANSACTIONS (Last 5)");
+
+    if(temp == NULL) {
+        displayError("No transactions found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("%-5s %-10s %-15s %-12s %-20s\n", "ID", "Account", "Type", "Amount", "Details");
+    printf("--------------------------------------------------------------------------------\n");
+
+    while(temp != NULL && count < 5) {
+        struct Account *acc = findAccount(temp->accNo);
+        char *holderName = (acc != NULL) ? acc->name : "Unknown";
+
+        if(strcmp(temp->type, "TRANSFER") == 0) {
+            struct Account *toAcc = findAccount(temp->toAccNo);
+            char *toName = (toAcc != NULL) ? toAcc->name : "Unknown";
+            printf("%-5d %-10d %-15s %-12.2f To: %d (%s)\n",
+                   temp->transactionId, temp->accNo, temp->type,
+                   temp->amount, temp->toAccNo, toName);
+        } else {
+            printf("%-5d %-10d %-15s %-12.2f %s\n",
+                   temp->transactionId, temp->accNo, temp->type,
+                   temp->amount, holderName);
+        }
+        temp = temp->next;
+        count++;
+    }
+
+    showExitMenu();
+}
+
+void undoLastTransaction() {
+    if(transactionTop == NULL) {
+        displayError("No transactions to undo!");
+        showExitMenu();
+        return;
+    }
+
+    struct Transaction *lastTrans = transactionTop;
+
+    displayHeader("UNDO LAST TRANSACTION");
+
+    if(strcmp(lastTrans->type, "DEPOSIT") == 0) {
+        struct Account *acc = findAccount(lastTrans->accNo);
+        if(acc != NULL) {
+            acc->balance -= lastTrans->amount;
+            printf("[UNDO] Undid deposit of %.2f for %s\n", lastTrans->amount, acc->name);
+        }
+    }
+    else if(strcmp(lastTrans->type, "WITHDRAW") == 0) {
+        struct Account *acc = findAccount(lastTrans->accNo);
+        if(acc != NULL) {
+            acc->balance += lastTrans->amount;
+            printf("[UNDO] Undid withdrawal of %.2f for %s\n", lastTrans->amount, acc->name);
+        }
+    }
+    else if(strcmp(lastTrans->type, "TRANSFER") == 0) {
+        struct Account *fromAcc = findAccount(lastTrans->accNo);
+        struct Account *toAcc = findAccount(lastTrans->toAccNo);
+
+        if(fromAcc != NULL && toAcc != NULL) {
+            fromAcc->balance += lastTrans->amount;
+            toAcc->balance -= lastTrans->amount;
+            printf("[UNDO] Undid transfer of %.2f from %s to %s\n",
+                   lastTrans->amount, fromAcc->name, toAcc->name);
+        }
+    }
+    else if(strcmp(lastTrans->type, "LOAN_DISBURSEMENT") == 0) {
+        struct Account *acc = findAccount(lastTrans->accNo);
+        if(acc != NULL) {
+            acc->balance -= lastTrans->amount;
+            acc->hasActiveLoan = 0;
+            acc->loanAmount = 0;
+            acc->loanRemaining = 0;
+            printf("[UNDO] Undid loan disbursement of %.2f for %s\n", lastTrans->amount, acc->name);
+        }
+    }
+    else if(strcmp(lastTrans->type, "LOAN_PAYMENT") == 0) {
+        struct Account *acc = findAccount(lastTrans->accNo);
+        if(acc != NULL) {
+            acc->balance += lastTrans->amount;
+            acc->loanRemaining += lastTrans->amount;
+            printf("[UNDO] Undid loan payment of %.2f for %s\n", lastTrans->amount, acc->name);
+        }
+    }
+
+    transactionTop = lastTrans->next;
+    free(lastTrans);
+    displaySuccess("Last transaction undone successfully!");
+    showExitMenu();
+}
+
+void depositMoney() {
+    int accNo;
+    float amount;
+    int priority;
+
+    displayHeader("DEPOSIT MONEY");
+    printf("Enter Account Number: ");
+    scanf("%d", &accNo);
+    clearInputBuffer();
+
+    struct Account *acc = findAccount(accNo);
+    if(acc == NULL) {
+        displayError("Account not found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("Account Holder: %s\n", acc->name);
+    printf("Current Balance: %.2f\n", acc->balance);
+    printf("Enter amount to deposit: ");
+    scanf("%f", &amount);
+    clearInputBuffer();
+
+    if(amount <= 0) {
+        displayError("Invalid amount!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\nPriority (1=High/VIP, 2=Medium, 3=Normal): ");
+    scanf("%d", &priority);
+
+    addToQueue(accNo, "DEPOSIT", amount, 0, priority, 0, 0);
+
+    if(priority == 3) {
+        displaySuccess("Deposit request added to Regular Queue!");
+    } else {
+        displaySuccess("Deposit request added to Priority Queue!");
+    }
+    showExitMenu();
+}
+
+void withdrawMoney() {
+    int accNo;
+    float amount;
+    int priority;
+
+    displayHeader("WITHDRAW MONEY");
+    printf("Enter Account Number: ");
+    scanf("%d", &accNo);
+    clearInputBuffer();
+
+    struct Account *acc = findAccount(accNo);
+    if(acc == NULL) {
+        displayError("Account not found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("Account Holder: %s\n", acc->name);
+    printf("Current Balance: %.2f\n", acc->balance);
+    printf("Enter amount to withdraw: ");
+    scanf("%f", &amount);
+    clearInputBuffer();
+
+    if(amount <= 0) {
+        displayError("Invalid amount!");
+        showExitMenu();
+        return;
+    }
+
+    if(acc->balance < amount) {
+        displayError("Insufficient balance!");
+        printf("Available: %.2f, Requested: %.2f\n", acc->balance, amount);
+        showExitMenu();
+        return;
+    }
+
+    printf("\nPriority (1=High/VIP, 2=Medium, 3=Normal): ");
+    scanf("%d", &priority);
+
+    addToQueue(accNo, "WITHDRAW", amount, 0, priority, 0, 0);
+
+    if(priority == 3) {
+        displaySuccess("Withdrawal request added to Regular Queue!");
+    } else {
+        displaySuccess("Withdrawal request added to Priority Queue!");
+    }
+    showExitMenu();
+}
+
+void transferMoney() {
+    int fromAccNo, toAccNo;
+    float amount;
+    int priority;
+
+    displayHeader("TRANSFER MONEY");
+    printf("Enter Sender Account Number: ");
+    scanf("%d", &fromAccNo);
+    printf("Enter Receiver Account Number: ");
+    scanf("%d", &toAccNo);
+    clearInputBuffer();
+
+    if(fromAccNo == toAccNo) {
+        displayError("Sender and Receiver cannot be the same!");
+        showExitMenu();
+        return;
+    }
+
+    struct Account *fromAcc = findAccount(fromAccNo);
+    struct Account *toAcc = findAccount(toAccNo);
+
+    if(fromAcc == NULL) {
+        displayError("Sender account not found!");
+        showExitMenu();
+        return;
+    }
+
+    if(toAcc == NULL) {
+        displayError("Receiver account not found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\nSender: %s (Balance: %.2f)\n", fromAcc->name, fromAcc->balance);
+    printf("Receiver: %s\n", toAcc->name);
+    printf("Enter amount to transfer: ");
+    scanf("%f", &amount);
+    clearInputBuffer();
+
+    if(amount <= 0) {
+        displayError("Invalid amount!");
+        showExitMenu();
+        return;
+    }
+
+    if(fromAcc->balance < amount) {
+        displayError("Insufficient balance!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\nPriority (1=High/VIP, 2=Medium, 3=Normal): ");
+    scanf("%d", &priority);
+
+    addToQueue(fromAccNo, "TRANSFER", amount, toAccNo, priority, 0, 0);
+
+    if(priority == 3) {
+        displaySuccess("Transfer request added to Regular Queue!");
+    } else {
+        displaySuccess("Transfer request added to Priority Queue!");
+    }
+    showExitMenu();
+}
+
+void addToQueue(int accNo, char *type, float amount, int toAccNo, int priority, float rate, int term) {
+    if(priority == 1 || priority == 2) {
+        struct PriorityNode *newNode = (struct PriorityNode*)malloc(sizeof(struct PriorityNode));
+        struct PriorityNode *temp = priorityFront;
+        struct PriorityNode *prev = NULL;
+
+        newNode->requestId = nextRequestId++;
+        newNode->accNo = accNo;
+        strcpy(newNode->type, type);
+        newNode->amount = amount;
+        newNode->toAccNo = toAccNo;
+        newNode->priority = priority;
+        newNode->interestRate = rate;
+        newNode->termMonths = term;
+        newNode->next = NULL;
+
+        if(priorityFront == NULL) {
+            priorityFront = newNode;
+        } else {
+            while(temp != NULL && temp->priority <= priority) {
+                prev = temp;
+                temp = temp->next;
+            }
+            if(prev == NULL) {
+                newNode->next = priorityFront;
+                priorityFront = newNode;
+            } else {
+                prev->next = newNode;
+                newNode->next = temp;
+            }
+        }
+
+        char *priorityStr = (priority == 1) ? "HIGH (VIP)" : "MEDIUM";
+        printf("[QUEUE] Added to PRIORITY Queue with %s priority (ID: %d)\n", priorityStr, newNode->requestId);
+    }
+    else {
+        struct Request *newRequest = (struct Request*)malloc(sizeof(struct Request));
+
+        newRequest->requestId = nextRequestId++;
+        newRequest->accNo = accNo;
+        strcpy(newRequest->type, type);
+        newRequest->amount = amount;
+        newRequest->toAccNo = toAccNo;
+        newRequest->interestRate = rate;
+        newRequest->termMonths = term;
+        newRequest->next = NULL;
+
+        if(requestRear == NULL) {
+            requestFront = requestRear = newRequest;
+        } else {
+            requestRear->next = newRequest;
+            requestRear = newRequest;
+        }
+
+        printf("[QUEUE] Added to REGULAR Queue (ID: %d)\n", newRequest->requestId);
+    }
+}
+
+void managePriorityQueue() {
+    if(priorityFront == NULL) {
+        displayError("No pending priority requests!");
+        showExitMenu();
+        return;
+    }
+
+    displayHeader("PRIORITY QUEUE - PENDING REQUESTS");
+
+    printf("\n%-5s %-10s %-15s %-12s %-10s %-20s\n",
+           "ID", "Account", "Type", "Amount", "Priority", "Details");
+    printf("--------------------------------------------------------------------------------\n");
+
+    struct PriorityNode *temp = priorityFront;
+    while(temp != NULL) {
+        char *priorityStr = (temp->priority == 1) ? "HIGH-VIP" : "MEDIUM";
+
+        if(strcmp(temp->type, "TRANSFER") == 0) {
+            printf("%-5d %-10d %-15s %-12.2f %-10s To: %d\n",
+                   temp->requestId, temp->accNo, temp->type,
+                   temp->amount, priorityStr, temp->toAccNo);
+        } else if(strcmp(temp->type, "LOAN_APPLICATION") == 0) {
+            float totalPayable = calculateTotalPayable(temp->amount, temp->interestRate, temp->termMonths);
+            printf("%-5d %-10d %-15s %-12.2f %-10s Loan: %.2f @ %.1f%% (Total: %.2f)\n",
+                   temp->requestId, temp->accNo, temp->type,
+                   temp->amount, priorityStr, temp->amount, temp->interestRate, totalPayable);
+        } else {
+            printf("%-5d %-10d %-15s %-12.2f %-10s -\n",
+                   temp->requestId, temp->accNo, temp->type,
+                   temp->amount, priorityStr);
+        }
+        temp = temp->next;
+    }
+
+    printf("\n========================================\n");
+    printf("  Queue Order: First come first serve\n");
+    printf("  (Based on Priority then arrival time)\n");
+    printf("========================================\n");
+    printf("  1. Approve First Request\n");
+    printf("  2. Remove First Request\n");
+    printf("  3. Back to Main Menu\n");
+    printf("========================================\n");
+    printf("Enter your choice: ");
+    int choice;
+    scanf("%d", &choice);
+    clearInputBuffer();
+
+    if(choice == 1) {
+        struct PriorityNode *current = priorityFront;
+
+        printf("\n--- Processing Request ID: %d ---\n", current->requestId);
+
+        if(strcmp(current->type, "DEPOSIT") == 0) {
+            struct Account *acc = findAccount(current->accNo);
+            if(acc == NULL) {
+                displayError("Account not found!");
+            } else {
+                acc->balance += current->amount;
+                pushTransaction(current->accNo, "DEPOSIT", current->amount, 0);
+                displaySuccess("Deposit approved!");
+                printf("Account: %s | New Balance: %.2f\n", acc->name, acc->balance);
+            }
+        }
+        else if(strcmp(current->type, "WITHDRAW") == 0) {
+            struct Account *acc = findAccount(current->accNo);
+            if(acc == NULL) {
+                displayError("Account not found!");
+            } else if(acc->balance >= current->amount) {
+                acc->balance -= current->amount;
+                pushTransaction(current->accNo, "WITHDRAW", current->amount, 0);
+                displaySuccess("Withdrawal approved!");
+                printf("Account: %s | New Balance: %.2f\n", acc->name, acc->balance);
+            } else {
+                displayError("Insufficient balance! Request rejected.");
+            }
+        }
+        else if(strcmp(current->type, "TRANSFER") == 0) {
+            struct Account *fromAcc = findAccount(current->accNo);
+            struct Account *toAcc = findAccount(current->toAccNo);
+
+            if(fromAcc == NULL || toAcc == NULL) {
+                displayError("Account not found!");
+            } else if(fromAcc->balance >= current->amount) {
+                fromAcc->balance -= current->amount;
+                toAcc->balance += current->amount;
+                pushTransaction(current->accNo, "TRANSFER", current->amount, current->toAccNo);
+                displaySuccess("Transfer approved!");
+                printf("Transferred %.2f from %s to %s\n", current->amount, fromAcc->name, toAcc->name);
+            } else {
+                displayError("Insufficient balance! Request rejected.");
+            }
+        }
+        else if(strcmp(current->type, "LOAN_APPLICATION") == 0) {
+            approveLoan(current->accNo, current->amount, current->interestRate, current->termMonths);
+        }
+        else if(strcmp(current->type, "LOAN_PAYMENT") == 0) {
+            struct Account *acc = findAccount(current->accNo);
+            if(acc && acc->hasActiveLoan) {
+                if(current->amount <= acc->balance) {
+                    acc->balance -= current->amount;
+
+                    if(current->amount <= acc->loanRemaining) {
+                        acc->loanRemaining -= current->amount;
+                        pushTransaction(current->accNo, "LOAN_PAYMENT", current->amount, 0);
+                        displaySuccess("Loan payment approved!");
+
+                        float totalPayable = calculateTotalPayable(acc->loanAmount, acc->loanInterestRate, 12);
+                        float paid = totalPayable - acc->loanRemaining;
+
+                        printf("Payment Amount : %.2f\n", current->amount);
+                        printf("Remaining Total: %.2f (Principal + Interest)\n", acc->loanRemaining);
+                        printf("Total Paid     : %.2f\n", paid);
+
+                        if(acc->loanRemaining <= 0) {
+                            acc->hasActiveLoan = 0;
+                            acc->loanAmount = 0;
+                            acc->loanRemaining = 0;
+                            acc->loanInterestRate = 0;
+                            printf("[CONGRATULATIONS] LOAN FULLY PAID OFF!\n");
+                        }
+                    } else {
+                        float excess = current->amount - acc->loanRemaining;
+                        acc->balance += excess;
+                        displayError("Payment amount exceeds remaining loan!");
+                        printf("Excess amount %.2f returned to account.\n", excess);
+                    }
+                } else {
+                    displayError("Insufficient balance!");
+                }
+            } else {
+                displayError("No active loan found!");
+            }
+        }
+
+        priorityFront = current->next;
+        free(current);
+
+    } else if(choice == 2) {
+        struct PriorityNode *current = priorityFront;
+        printf("\nRemoving Request ID: %d\n", current->requestId);
+        priorityFront = current->next;
+        free(current);
+        displaySuccess("Request removed from queue!");
+    }
+
+    showExitMenu();
+}
+
+void manageRegularQueue() {
+    if(requestFront == NULL) {
+        displayError("No pending regular requests!");
+        showExitMenu();
+        return;
+    }
+
+    displayHeader("REGULAR QUEUE - PENDING REQUESTS");
+
+    printf("\n%-5s %-10s %-15s %-12s %-20s\n",
+           "ID", "Account", "Type", "Amount", "Details");
+    printf("--------------------------------------------------------------------------------\n");
+
+    struct Request *temp = requestFront;
+    while(temp != NULL) {
+        if(strcmp(temp->type, "TRANSFER") == 0) {
+            printf("%-5d %-10d %-15s %-12.2f To: %d\n",
+                   temp->requestId, temp->accNo, temp->type,
+                   temp->amount, temp->toAccNo);
+        } else if(strcmp(temp->type, "LOAN_APPLICATION") == 0) {
+            float totalPayable = calculateTotalPayable(temp->amount, temp->interestRate, temp->termMonths);
+            printf("%-5d %-10d %-15s %-12.2f Loan: %.2f @ %.1f%% (Total: %.2f)\n",
+                   temp->requestId, temp->accNo, temp->type,
+                   temp->amount, temp->amount, temp->interestRate, totalPayable);
+        } else {
+            printf("%-5d %-10d %-15s %-12.2f -\n",
+                   temp->requestId, temp->accNo, temp->type,
+                   temp->amount);
+        }
+        temp = temp->next;
+    }
+
+    printf("\n========================================\n");
+    printf("  Queue Order: First come first serve\n");
+    printf("========================================\n");
+    printf("  1. Approve First Request\n");
+    printf("  2. Remove First Request\n");
+    printf("  3. Back to Main Menu\n");
+    printf("========================================\n");
+    printf("Enter your choice: ");
+    int choice;
+    scanf("%d", &choice);
+    clearInputBuffer();
+
+    if(choice == 1) {
+        struct Request *current = requestFront;
+
+        printf("\n--- Processing Request ID: %d ---\n", current->requestId);
+
+        if(strcmp(current->type, "DEPOSIT") == 0) {
+            struct Account *acc = findAccount(current->accNo);
+            if(acc == NULL) {
+                displayError("Account not found!");
+            } else {
+                acc->balance += current->amount;
+                pushTransaction(current->accNo, "DEPOSIT", current->amount, 0);
+                displaySuccess("Deposit approved!");
+                printf("Account: %s | New Balance: %.2f\n", acc->name, acc->balance);
+            }
+        }
+        else if(strcmp(current->type, "WITHDRAW") == 0) {
+            struct Account *acc = findAccount(current->accNo);
+            if(acc == NULL) {
+                displayError("Account not found!");
+            } else if(acc->balance >= current->amount) {
+                acc->balance -= current->amount;
+                pushTransaction(current->accNo, "WITHDRAW", current->amount, 0);
+                displaySuccess("Withdrawal approved!");
+                printf("Account: %s | New Balance: %.2f\n", acc->name, acc->balance);
+            } else {
+                displayError("Insufficient balance! Request rejected.");
+            }
+        }
+        else if(strcmp(current->type, "TRANSFER") == 0) {
+            struct Account *fromAcc = findAccount(current->accNo);
+            struct Account *toAcc = findAccount(current->toAccNo);
+
+            if(fromAcc == NULL || toAcc == NULL) {
+                displayError("Account not found!");
+            } else if(fromAcc->balance >= current->amount) {
+                fromAcc->balance -= current->amount;
+                toAcc->balance += current->amount;
+                pushTransaction(current->accNo, "TRANSFER", current->amount, current->toAccNo);
+                displaySuccess("Transfer approved!");
+                printf("Transferred %.2f from %s to %s\n", current->amount, fromAcc->name, toAcc->name);
+            } else {
+                displayError("Insufficient balance! Request rejected.");
+            }
+        }
+        else if(strcmp(current->type, "LOAN_APPLICATION") == 0) {
+            approveLoan(current->accNo, current->amount, current->interestRate, current->termMonths);
+        }
+        else if(strcmp(current->type, "LOAN_PAYMENT") == 0) {
+            struct Account *acc = findAccount(current->accNo);
+            if(acc && acc->hasActiveLoan) {
+                if(current->amount <= acc->balance) {
+                    acc->balance -= current->amount;
+
+                    if(current->amount <= acc->loanRemaining) {
+                        acc->loanRemaining -= current->amount;
+                        pushTransaction(current->accNo, "LOAN_PAYMENT", current->amount, 0);
+                        displaySuccess("Loan payment approved!");
+
+                        float totalPayable = calculateTotalPayable(acc->loanAmount, acc->loanInterestRate, 12);
+                        float paid = totalPayable - acc->loanRemaining;
+
+                        printf("Payment Amount : %.2f\n", current->amount);
+                        printf("Remaining Total: %.2f (Principal + Interest)\n", acc->loanRemaining);
+                        printf("Total Paid     : %.2f\n", paid);
+
+                        if(acc->loanRemaining <= 0) {
+                            acc->hasActiveLoan = 0;
+                            acc->loanAmount = 0;
+                            acc->loanRemaining = 0;
+                            acc->loanInterestRate = 0;
+                            printf("[CONGRATULATIONS] LOAN FULLY PAID OFF!\n");
+                        }
+                    } else {
+                        float excess = current->amount - acc->loanRemaining;
+                        acc->balance += excess;
+                        displayError("Payment amount exceeds remaining loan!");
+                        printf("Excess amount %.2f returned to account.\n", excess);
+                    }
+                } else {
+                    displayError("Insufficient balance!");
+                }
+            } else {
+                displayError("No active loan found!");
+            }
+        }
+
+        requestFront = current->next;
+        if(requestFront == NULL) {
+            requestRear = NULL;
+        }
+        free(current);
+
+    } else if(choice == 2) {
+        struct Request *current = requestFront;
+        printf("\nRemoving Request ID: %d\n", current->requestId);
+        requestFront = current->next;
+        if(requestFront == NULL) {
+            requestRear = NULL;
+        }
+        free(current);
+        displaySuccess("Request removed from queue!");
+    }
+
+    showExitMenu();
+}
+
+float calculateEMI(float principal, float rate, int months) {
+    float monthlyRate = rate / 12 / 100;
+    if(monthlyRate == 0) return principal / months;
+    float emi = principal * monthlyRate * pow(1 + monthlyRate, months) / (pow(1 + monthlyRate, months) - 1);
+    return emi;
+}
+
+float calculateTotalPayable(float principal, float rate, int months) {
+    float emi = calculateEMI(principal, rate, months);
+    return emi * months;
+}
+
+void approveLoan(int accNo, float amount, float interestRate, int term) {
+    struct Account *acc = findAccount(accNo);
+    if(acc == NULL) {
+        displayError("Account not found!");
+        return;
+    }
+
+    if(acc->hasActiveLoan) {
+        displayError("Account already has an active loan!");
+        return;
+    }
+
+    if(acc->balance < amount * 0.1) {
+        displayError("Loan REJECTED: Insufficient balance!");
+        printf("Need at least 10%% of loan amount (%.2f) in account\n", amount * 0.1);
+        return;
+    }
+
+    float emi = calculateEMI(amount, interestRate, term);
+    float totalPayable = emi * term;
+    float totalInterest = totalPayable - amount;
+
+    acc->loanAmount = amount;
+    acc->loanRemaining = totalPayable;
+    acc->loanInterestRate = interestRate;
+    acc->hasActiveLoan = 1;
+
+    struct Loan *newLoan = (struct Loan*)malloc(sizeof(struct Loan));
+    newLoan->loanId = nextLoanId++;
+    newLoan->accNo = accNo;
+    newLoan->principalAmount = amount;
+    newLoan->remainingAmount = totalPayable;
+    newLoan->interestRate = interestRate;
+    newLoan->termMonths = term;
+    newLoan->monthsPaid = 0;
+    newLoan->emiAmount = emi;
+    strcpy(newLoan->status, "ACTIVE");
+    newLoan->next = loanHead;
+    loanHead = newLoan;
+
+    acc->balance += amount;
+    pushTransaction(accNo, "LOAN_DISBURSEMENT", amount, 0);
+
+    printf("\n========================================\n");
+    printf("[APPROVED] LOAN APPROVED for %s!\n", acc->name);
+    printf("========================================\n");
+    printf("Principal Amount : %.2f\n", amount);
+    printf("Interest Rate    : %.2f%%\n", interestRate);
+    printf("Term             : %d months\n", term);
+    printf("Monthly EMI      : %.2f\n", emi);
+    printf("----------------------------------------\n");
+    printf("Total Interest   : %.2f\n", totalInterest);
+    printf("Total Payable    : %.2f\n", totalPayable);
+    printf("----------------------------------------\n");
+    printf("Amount Disbursed : %.2f\n", amount);
+    printf("New Balance      : %.2f\n", acc->balance);
+    printf("========================================\n");
+}
+
+void applyForLoan() {
+    int accNo;
+    float amount;
+    int term;
+    float rate;
+    int priority;
+
+    displayHeader("APPLY FOR LOAN");
+    printf("Enter Account Number: ");
+    scanf("%d", &accNo);
+    clearInputBuffer();
+
+    struct Account *acc = findAccount(accNo);
+    if(acc == NULL) {
+        displayError("Account not found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("Account Holder: %s\n", acc->name);
+    printf("Current Balance: %.2f\n", acc->balance);
+
+    if(acc->hasActiveLoan) {
+        displayError("You already have an active loan!");
+        printf("Remaining amount: %.2f\n", acc->loanRemaining);
+        showExitMenu();
+        return;
+    }
+
+    printf("Enter Loan Amount: ");
+    scanf("%f", &amount);
+    printf("Enter Loan Term (months, max 60): ");
+    scanf("%d", &term);
+    printf("Enter Interest Rate (%% per annum): ");
+    scanf("%f", &rate);
+
+    if(amount <= 0 || term <= 0 || term > 60 || rate <= 0) {
+        displayError("Invalid loan parameters!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\nPriority (1=High/VIP, 2=Medium, 3=Normal): ");
+    scanf("%d", &priority);
+
+    float emi = calculateEMI(amount, rate, term);
+    float totalPayable = emi * term;
+    float totalInterest = totalPayable - amount;
+
+    printf("\n========================================\n");
+    printf("      LOAN APPLICATION SUMMARY\n");
+    printf("========================================\n");
+    printf("Principal Amount: %.2f\n", amount);
+    printf("Interest Rate   : %.2f%%\n", rate);
+    printf("Term            : %d months\n", term);
+    printf("Monthly EMI     : %.2f\n", emi);
+    printf("----------------------------------------\n");
+    printf("Total Interest  : %.2f\n", totalInterest);
+    printf("Total Payable   : %.2f\n", totalPayable);
+    printf("========================================\n");
+
+    printf("\nConfirm loan application? (1=Yes, 0=No): ");
+    int confirm;
+    scanf("%d", &confirm);
+
+    if(confirm == 1) {
+        addToQueue(accNo, "LOAN_APPLICATION", amount, 0, priority, rate, term);
+
+        if(priority == 3) {
+            displaySuccess("Loan application added to Regular Queue!");
+        } else {
+            displaySuccess("Loan application added to Priority Queue!");
+        }
+        printf("Please process the request from queue to approve the loan.\n");
+    } else {
+        printf("Loan application cancelled.\n");
+    }
+
+    showExitMenu();
+}
+
+void makeLoanPayment() {
+    int accNo;
+    float amount;
+    int priority;
+
+    displayHeader("MAKE LOAN PAYMENT");
+    printf("Enter Account Number: ");
+    scanf("%d", &accNo);
+    clearInputBuffer();
+
+    struct Account *acc = findAccount(accNo);
+    if(acc == NULL) {
+        displayError("Account not found!");
+        showExitMenu();
+        return;
+    }
+
+    if(!acc->hasActiveLoan) {
+        displayError("No active loan found for this account!");
+        showExitMenu();
+        return;
+    }
+
+    float totalPayable = acc->loanRemaining;
+    float principalAmount = acc->loanAmount;
+    float totalInterest = totalPayable - principalAmount;
+    float paid = (calculateTotalPayable(principalAmount, acc->loanInterestRate, 12)) - totalPayable;
+
+    printf("Account Holder: %s\n", acc->name);
+    printf("Current Balance: %.2f\n", acc->balance);
+    printf("========================================\n");
+    printf("Principal Amount: %.2f\n", principalAmount);
+    printf("Interest Rate   : %.2f%%\n", acc->loanInterestRate);
+    printf("Total Interest  : %.2f\n", totalInterest);
+    printf("Total Payable   : %.2f\n", totalPayable);
+    printf("Paid Amount     : %.2f\n", paid);
+    printf("Remaining       : %.2f\n", totalPayable);
+    printf("========================================\n");
+    printf("Enter Payment Amount: ");
+    scanf("%f", &amount);
+
+    if(amount <= 0) {
+        displayError("Invalid amount!");
+        showExitMenu();
+        return;
+    }
+
+    if(amount > acc->balance) {
+        displayError("Insufficient balance!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\nPriority (1=High/VIP, 2=Medium, 3=Normal): ");
+    scanf("%d", &priority);
+
+    addToQueue(accNo, "LOAN_PAYMENT", amount, 0, priority, 0, 0);
+
+    if(priority == 3) {
+        displaySuccess("Loan payment request added to Regular Queue!");
+    } else {
+        displaySuccess("Loan payment request added to Priority Queue!");
+    }
+    showExitMenu();
+}
+
+void checkLoanStatus() {
+    int accNo;
+
+    displayHeader("CHECK LOAN STATUS");
+    printf("Enter Account Number: ");
+    scanf("%d", &accNo);
+    clearInputBuffer();
+
+    struct Account *acc = findAccount(accNo);
+    if(acc == NULL) {
+        displayError("Account not found!");
+        showExitMenu();
+        return;
+    }
+
+    printf("\n========================================\n");
+    printf("         LOAN STATUS\n");
+    printf("========================================\n");
+    printf("Account Holder: %s\n", acc->name);
+    printf("Account Number: %d\n", acc->accNo);
+    printf("----------------------------------------\n");
+
+    if(acc->hasActiveLoan) {
+        float totalPayable = acc->loanRemaining;
+        float principalAmount = acc->loanAmount;
+        float totalInterest = totalPayable - principalAmount;
+        float paid = (calculateTotalPayable(principalAmount, acc->loanInterestRate, 12)) - totalPayable;
+        float progress = (paid / calculateTotalPayable(principalAmount, acc->loanInterestRate, 12)) * 100;
+
+        printf("Status          : ACTIVE\n");
+        printf("Principal Amount: %.2f\n", principalAmount);
+        printf("Interest Rate   : %.2f%%\n", acc->loanInterestRate);
+        printf("Total Interest  : %.2f\n", totalInterest);
+        printf("Total Payable   : %.2f\n", totalPayable);
+        printf("----------------------------------------\n");
+        printf("Paid Amount     : %.2f\n", paid);
+        printf("Remaining       : %.2f\n", totalPayable);
+        printf("Progress        : %.1f%%\n", progress);
+    } else {
+        printf("Status         : NO ACTIVE LOAN\n");
+        if(acc->loanAmount > 0) {
+            printf("Previous Loan  : FULLY PAID\n");
+            printf("Total Paid     : %.2f\n", acc->loanAmount);
+        }
+    }
+    printf("========================================\n");
+
+    showExitMenu();
+}
+
+void displayAllLoans() {
+    struct Loan *temp = loanHead;
+
+    displayHeader("ALL ACTIVE LOANS");
+
+    if(temp == NULL) {
+        displayError("No active loans in the system!");
+        showExitMenu();
+        return;
+    }
+
+    printf("%-8s %-10s %-25s %-12s %-12s %-8s %-10s\n",
+           "Loan ID", "Account", "Holder Name", "Principal", "Remaining", "Rate%%", "EMI");
+    printf("----------------------------------------------------------------------------------------\n");
+
+    while(temp != NULL) {
+        struct Account *acc = findAccount(temp->accNo);
+        char *name = (acc != NULL) ? acc->name : "Unknown";
+
+        printf("%-8d %-10d %-25s %-12.2f %-12.2f %-8.2f %-10.2f\n",
+               temp->loanId, temp->accNo, name, temp->principalAmount,
+               temp->remainingAmount, temp->interestRate, temp->emiAmount);
+        temp = temp->next;
+    }
+
+    showExitMenu();
+}
+
+int main() {
+    int choice;
+
+    printf("\n========================================\n");
+    printf("   BANK TRANSACTION MANAGEMENT SYSTEM\n");
+    printf("========================================\n");
+
+    while(1) {
+        printf("             MAIN MENU\n");
+        printf("========================================\n");
+        printf("ACCOUNT MANAGEMENT\n");
+        printf("========================================\n");
+        printf("  1. Create New Account\n");
+        printf("  2. Display All Accounts\n");
+        printf("  3. Delete Account\n");
+        printf("  4. Search Account\n");
+        printf("  5. Check Balance\n");
+        printf("========================================\n");
+        printf("TRANSACTIONS\n");
+        printf("========================================\n");
+        printf("  6. Deposit Money\n");
+        printf("  7. Withdraw Money\n");
+        printf("  8. Transfer Money\n");
+        printf("  9. Recent Transactions\n");
+        printf(" 10. Undo Last Transaction\n");
+        printf("========================================\n");
+        printf("LOAN SYSTEM\n");
+        printf("========================================\n");
+        printf(" 11. Apply for Loan\n");
+        printf(" 12. Make Loan Payment\n");
+        printf(" 13. Check Loan Status\n");
+        printf(" 14. Display All Loans\n");
+        printf("========================================\n");
+        printf("All Requests\n");
+        printf("========================================\n");
+        printf(" 15. Show Priority Request\n");
+        printf(" 16. Show Regular Request\n");
+        printf("========================================\n");
+        printf(" 17. Exit\n");
+        printf("========================================\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        clearInputBuffer();
+
+        switch(choice) {
+            case 1: createAccount(); break;
+            case 2: displayAllAccounts(); break;
+            case 3: deleteAccount(); break;
+            case 4: searchAccount(); break;
+            case 5: checkBalance(); break;
+            case 6: depositMoney(); break;
+            case 7: withdrawMoney(); break;
+            case 8: transferMoney(); break;
+            case 9: displayRecentTransactions(); break;
+            case 10: undoLastTransaction(); break;
+            case 11: applyForLoan(); break;
+            case 12: makeLoanPayment(); break;
+            case 13: checkLoanStatus(); break;
+            case 14: displayAllLoans(); break;
+            case 15: managePriorityQueue(); break;
+            case 16: manageRegularQueue(); break;
+            case 17:
+                printf("\n========================================\n");
+                printf("  Thank you for using our banking system!\n");
+                printf("              Goodbye!\n");
+                printf("========================================\n");
+                exit(0);
+            default:
+                displayError("Invalid choice! Please try again.");
+                showExitMenu();
+        }
+    }
+
+    return 0;
+}
